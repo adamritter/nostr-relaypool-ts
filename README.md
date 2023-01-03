@@ -27,5 +27,5 @@ sub.onevent((event, isAfterEose, relayURL) =>
 
 // Called for each relay with the events that were received from the particular server
 sub.oneose((events, relayURL) =>
-    {console.log(events, relayURL)})
+    { console.log(events, relayURL) })
 ```
