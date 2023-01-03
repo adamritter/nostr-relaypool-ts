@@ -23,7 +23,7 @@ let sub=relayPool.sub([{
   }], relays)
 
 sub.onevent((event, isAfterEose, relayURL) =>
-    console.log(event, isAfterEose, relayURL))
+    { console.log(event, isAfterEose, relayURL) })
 
 // Called for each relay with the events that were received from the particular server
 sub.oneose((events, relayURL) =>
