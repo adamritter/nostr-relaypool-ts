@@ -1,5 +1,5 @@
 # nostr-relaypool-ts
-A Nostr RelayPool implementation in TypeScript using only nostr-tools library as a dependency 
+A Nostr RelayPool implementation in TypeScript using only https://github.com/nbd-wtf/nostr-tools library as a dependency 
 
 Install:
 npm i nostr-relaypool
