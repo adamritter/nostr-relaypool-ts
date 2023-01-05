@@ -4,8 +4,10 @@ import {type Relay, relayInit} from './relay'
 let unique = (arr:string[]) => [...new Set(arr)]
 export class RelayPool {
     relayByUrl: Map<string, Relay>
+    noticecbs: Array<(msg: string)=>void>
     constructor(relays: string[]|undefined) {
         this.relayByUrl = new Map()
+        this.noticecbs = []
         if (relays) {
             for (let relay of unique(relays)) {
                 this.addOrGetRelay(relay)
@@ -20,6 +22,9 @@ export class RelayPool {
         relayInstance = relayInit(relay)
         this.relayByUrl.set(relay, relayInstance)
         relayInstance.connect().then(onfulfilled => {
+            relayInstance?.on('notice', (msg: string) => {
+                this.noticecbs.forEach((cb) => cb(relay + ': ' + msg))
+            })
         }, onrejected => {
             console.warn('failed to connect to relay ' + relay)
         })
@@ -50,9 +55,7 @@ export class RelayPool {
         }
     }
     onnotice(cb: (msg: string)=>void) {
-        this.relayByUrl.forEach(
-            (relay: Relay, url: string) =>
-                relay.on('notice', (msg: string) => cb(url + ': ' + msg)))
+        this.noticecbs.push(cb)
     }
     onerror(cb: (msg: string)=>void) {
         this.relayByUrl.forEach((relay: Relay, url: string) =>
