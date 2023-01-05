@@ -19,7 +19,10 @@ export class RelayPool {
         }
         relayInstance = relayInit(relay)
         this.relayByUrl.set(relay, relayInstance)
-        relayInstance.connect()
+        relayInstance.connect().then(onfulfilled => {
+        }, onrejected => {
+            console.warn('failed to connect to relay ' + relay)
+        })
         return relayInstance
     }
 
