@@ -5,20 +5,6 @@ import {type Filter, matchFilters} from 'nostr-tools'
 
 type RelayEvent = 'connect' | 'disconnect' | 'error' | 'notice'
 
-export type Relay = {
-  url: string
-  status: number
-  connect: () => Promise<void>
-  close: () => Promise<void>
-  sub: (filters: Filter[], opts?: SubscriptionOptions) => Sub
-  publish: (event: Event) => Pub
-  on: (type: RelayEvent, cb: any) => void
-  off: (type: RelayEvent, cb: any) => void
-}
-export type Pub = {
-  on: (type: 'ok' | 'seen' | 'failed', cb: any) => void
-  off: (type: 'ok' | 'seen' | 'failed', cb: any) => void
-}
 export type Sub = {
   sub: (filters: Filter[], opts: SubscriptionOptions) => Sub
   unsub: () => void
@@ -31,13 +17,13 @@ type SubscriptionOptions = {
   id?: string
 }
 
-export function relayInit(url: string): Relay {
-  var ws: WebSocket
-  var resolveClose: () => void
-  let connected = false
-  let sendOnConnect:string[] = []
-  var openSubs: {[id: string]: {filters: Filter[]} & SubscriptionOptions} = {}
-  var listeners: {
+export class Relay {
+  ws: WebSocket
+  url: string
+  connected = false
+  sendOnConnect:string[] = []
+  openSubs: {[id: string]: {filters: Filter[]} & SubscriptionOptions} = {}
+  listeners: {
     connect: Array<() => void>
     disconnect: Array<() => void>
     error: Array<() => void>
@@ -48,153 +34,145 @@ export function relayInit(url: string): Relay {
     error: [],
     notice: []
   }
-  var subListeners: {
+  subListeners: {
     [subid: string]: {
       event: Array<(event: Event) => void>
       eose: Array<() => void>
     }
   } = {}
-  var pubListeners: {
+  pubListeners: {
     [eventid: string]: {
       ok: Array<() => void>
       seen: Array<() => void>
       failed: Array<(reason: string) => void>
     }
-  } = {}
+   } = {}
 
-  async function connectRelay(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      ws = new WebSocket(url)
+  constructor(url: string) {
+    this.url = url
+    this.ws = new WebSocket(url)
+    this.ws.onopen = () => this.#onopen()
+    this.ws.onerror = () => this.#onerror
+  }
 
-      ws.onopen = () => {
-        connected = true
-        for (let subid in openSubs) {
-            trySend(['REQ', subid, ...openSubs[subid].filters])
-        }
-        for (let msg of sendOnConnect) {
-          ws.send(msg)
-        }
-        sendOnConnect = []
-
-        listeners.connect.forEach(cb => cb())
-        resolve()
+  #onopen() {
+      this.connected = true
+      for (let subid in this.openSubs) {
+          this.trySend(['REQ', subid, ...this.openSubs[subid].filters])
       }
-      ws.onerror = () => {
-        listeners.error.forEach(cb => cb())
-        reject()
+      for (let msg of this.sendOnConnect) {
+        this.ws.send(msg)
       }
-      ws.onclose = async () => {
-        connected = false
-        listeners.disconnect.forEach(cb => cb())
-        resolveClose && resolveClose()
+      this.sendOnConnect = []
+
+      this.listeners.connect.forEach(cb => cb())
+    }
+   #onerror() {
+      this.listeners.error.forEach(cb => cb())
+    }
+    #onclose() {
+      this.connected = false
+      this.listeners.disconnect.forEach(cb => cb())
+    }
+
+    #onmessage(e: MessageEvent) {
+      var data
+      try {
+        data = JSON.parse(e.data)
+      } catch (err) {
+        data = e.data
       }
 
-      ws.onmessage = async e => {
-        var data
-        try {
-          data = JSON.parse(e.data)
-        } catch (err) {
-          data = e.data
-        }
+      if (data.length >= 1) {
+        switch (data[0]) {
+          case 'EVENT':
+            if (data.length !== 3) return // ignore empty or malformed EVENT
 
-        if (data.length >= 1) {
-          switch (data[0]) {
-            case 'EVENT':
-              if (data.length !== 3) return // ignore empty or malformed EVENT
-
-              let id = data[1]
-              let event = data[2]
-              if (
-                validateEvent(event) &&
-                openSubs[id] &&
-                (openSubs[id].skipVerification || verifySignature(event)) &&
-                matchFilters(openSubs[id].filters, event)
-              ) {
-                openSubs[id]
-                ;(subListeners[id]?.event || []).forEach(cb => cb(event))
-              }
-              return
-            case 'EOSE': {
-              if (data.length !== 2) return // ignore empty or malformed EOSE
-              let id = data[1]
-              ;(subListeners[id]?.eose || []).forEach(cb => cb())
-              return
+            let id = data[1]
+            let event = data[2]
+            if (
+              validateEvent(event) &&
+              this.openSubs[id] &&
+              (this.openSubs[id].skipVerification || verifySignature(event)) &&
+              matchFilters(this.openSubs[id].filters, event)
+            ) {
+              this.openSubs[id]
+              ;(this.subListeners[id]?.event || []).forEach(cb => cb(event))
             }
-            case 'OK': {
-              if (data.length < 3) return // ignore empty or malformed OK
-              let id: string = data[1]
-              let ok: boolean = data[2]
-              let reason: string = data[3] || ''
-              if (ok) pubListeners[id]?.ok.forEach(cb => cb())
-              else pubListeners[id]?.failed.forEach(cb => cb(reason))
-              return
-            }
-            case 'NOTICE':
-              if (data.length !== 2) return // ignore empty or malformed NOTICE
-              let notice = data[1]
-              listeners.notice.forEach(cb => cb(notice))
-              return
+            return
+          case 'EOSE': {
+            if (data.length !== 2) return // ignore empty or malformed EOSE
+            let id = data[1]
+            ;(this.subListeners[id]?.eose || []).forEach(cb => cb())
+            return
           }
+          case 'OK': {
+            if (data.length < 3) return // ignore empty or malformed OK
+            let id: string = data[1]
+            let ok: boolean = data[2]
+            let reason: string = data[3] || ''
+            if (ok) this.pubListeners[id]?.ok.forEach(cb => cb())
+            else this.pubListeners[id]?.failed.forEach(cb => cb(reason))
+            return
+          }
+          case 'NOTICE':
+            if (data.length !== 2) return // ignore empty or malformed NOTICE
+            let notice = data[1]
+            this.listeners.notice.forEach(cb => cb(notice))
+            return
         }
       }
-    })
-  }
+    }
 
-  async function connect(): Promise<void> {
-    if (ws?.readyState && ws.readyState === 1) return // ws already open
-    await connectRelay()
-  }
-
-  async function trySend(params: [string, ...any]) {
+  trySend(params: [string, ...any]) {
     let msg = JSON.stringify(params)
-
-    if (connected) {
-      ws.send(msg)
+    if (this.connected) {
+      this.ws.send(msg)
     } else {
-      sendOnConnect.push(msg)
+      this.sendOnConnect.push(msg)
     }
   }
 
-  const sub = (
+  sub(
     filters: Filter[],
     {
       skipVerification = false,
       id = Math.random().toString().slice(2)
     }: SubscriptionOptions = {}
-  ): Sub => {
+  ): Sub {
     let subid = id
 
-    openSubs[subid] = {
+    this.openSubs[subid] = {
       id: subid,
       filters,
       skipVerification
     }
-    if (connected) {
-        trySend(['REQ', subid, ...filters])
+    if (this.connected) {
+        this.trySend(['REQ', subid, ...filters])
     }
 
     return {
       sub: (newFilters, newOpts = {}) =>
-        sub(newFilters || filters, {
+      this.sub(newFilters || filters, {
           skipVerification: newOpts.skipVerification || skipVerification,
           id: subid
         }),
       unsub: () => {
-        delete openSubs[subid]
-        delete subListeners[subid]
-        if (connected) {
-          trySend(['CLOSE', subid])
+        delete this.openSubs[subid]
+        delete this.subListeners[subid]
+        if (this.connected) {
+          this.trySend(['CLOSE', subid])
         }
       },
       on: (type: 'event' | 'eose', cb: any): void => {
-        subListeners[subid] = subListeners[subid] || {
+        this.subListeners[subid] = this.subListeners[subid] || {
           event: [],
           eose: []
         }
-        subListeners[subid][type].push(cb)
+        this.subListeners[subid][type].push(cb)
       },
       off: (type: 'event' | 'eose', cb: any): void => {
-        let listeners = subListeners[subid]
+        let listeners = this.subListeners[subid]
         let idx = listeners[type].indexOf(cb)
         if (idx >= 0) listeners[type].splice(idx, 1)
       }
@@ -282,8 +260,26 @@ export function relayInit(url: string): Relay {
         resolveClose = resolve
       })
     },
-    get status() {
-      return ws?.readyState ?? 3
+    status() {
+      return this.ws?.readyState ?? 3
     }
+  }
+}
+
+
+
+export class Pub {
+  relay: Relay
+  event: Event
+  constructor(relay: Relay, event: Event) {
+    this.relay = relay
+    this.event = event
+  }
+  onevent()
+  on(cb: (type: 'ok' | 'seen' | 'failed', cb: any) => void) {
+
+  }
+  off(cb: (type: 'ok' | 'seen' | 'failed', cb: any) => void) {
+
   }
 }
