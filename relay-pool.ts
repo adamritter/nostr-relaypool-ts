@@ -5,7 +5,7 @@ let unique = (arr:string[]) => [...new Set(arr)]
 export class RelayPool {
     relayByUrl: Map<string, Relay>
     noticecbs: Array<(msg: string)=>void>
-    constructor(relays: string[]|undefined) {
+    constructor(relays?: string[]) {
         this.relayByUrl = new Map()
         this.noticecbs = []
         if (relays) {
