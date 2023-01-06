@@ -58,13 +58,10 @@ export class RelayPool {
                 filtersWithoutRelay.push(filter)
             }
         }
-        console.log('filtersByRelay', filtersByRelay)
-
         let relays_for_subs = []
 
         for (let relay of relays) {
             let filters = filtersByRelay.get(relay)
-            console.log('filters', filters, 'relay', relay)
             if (!filters && filtersWithoutRelay.length > 0) {
                 let instance = this.addOrGetRelay(relay)
                 subs.push(instance.sub(filtersWithoutRelay))
