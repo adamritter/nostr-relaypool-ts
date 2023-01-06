@@ -16,6 +16,7 @@ let relays = ["wss://relay.damus.io",
               "wss://nostr.fmt.wiz.biz",
               "wss://nostr.bongbong.com"];
 
+// let relaypool = new RelayPool() is also correct, as relayPool.sub / pub automatically connects to the servers.
 let relaypool = new RelayPool(relays)
 
 // If you pass relay to a filter, it will be requested only from that relay.
