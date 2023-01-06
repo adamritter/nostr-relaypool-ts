@@ -109,3 +109,47 @@ test('listening (twice) and publishing', async () => {
     ])
   ).resolves.toEqual([true, true])
 })
+
+
+test('relay option in filter', () => {
+  var resolve1:(success:boolean)=>void
+  var resolve2:(success:boolean)=>void
+
+  let sub = relaypool.sub([
+    {
+      ids: ['d7dd5eb3ab747e16f8d0212d53032ea2a7cadef53837e5a6c66d42849fcb9027'],
+      relay: relayurls[0]
+    }
+  ], [])
+  sub.onevent((event, afterEose, url) => {
+    expect(event).toHaveProperty(
+      'id',
+      'd7dd5eb3ab747e16f8d0212d53032ea2a7cadef53837e5a6c66d42849fcb9027'
+    )
+    expect(afterEose).toBe(false)
+    expect(url).toBe(relayurls[0])
+    resolve1(true)
+  })
+  sub.oneose((events, url) => {
+    expect(events).toHaveLength(1)
+    if (events && events.length > 0) {
+      expect(events[0]).toHaveProperty(
+        'id',
+        'd7dd5eb3ab747e16f8d0212d53032ea2a7cadef53837e5a6c66d42849fcb9027'
+      )
+    }
+    expect(url).toBe(relayurls[0])
+    resolve2(true)
+  })
+
+  return expect(
+    Promise.all([
+      new Promise(resolve => {
+        resolve1 = resolve
+      }),
+      new Promise(resolve => {
+        resolve2 = resolve
+      })
+    ])
+  ).resolves.toEqual([true, true])
+})

@@ -38,14 +38,48 @@ export class RelayPool {
         this.relayByUrl.clear()
     }
 
-    sub(filters:Filter[], relays:string[]) {
+    sub(filters:(Filter&{relay?:string})[], relays:string[]) {
         relays = unique(relays)
         let subs = []
-        for (let relay of relays) {
-            let instance = this.addOrGetRelay(relay)
-            subs.push(instance.sub(filters))
+        let filtersByRelay = new Map<string, Filter[]>()
+        let filtersWithoutRelay : Filter[] = []
+        for (let filter of filters) {
+            let relay = filter.relay
+            if (relay) {
+                let filters = filtersByRelay.get(relay)
+                if (filters) {
+                    // @ts-ignore
+                    filters.push({...filter, relay: undefined})
+                } else {
+                    // @ts-ignore
+                    filtersByRelay.set(relay, [{...filter, relay: undefined}])
+                }
+            } else {
+                filtersWithoutRelay.push(filter)
+            }
         }
-        return new RelayPoolSubscription(subs, relays)
+        console.log('filtersByRelay', filtersByRelay)
+
+        let relays_for_subs = []
+
+        for (let relay of relays) {
+            let filters = filtersByRelay.get(relay)
+            console.log('filters', filters, 'relay', relay)
+            if (!filters && filtersWithoutRelay.length > 0) {
+                let instance = this.addOrGetRelay(relay)
+                subs.push(instance.sub(filtersWithoutRelay))
+                relays_for_subs.push(relay)
+            }
+        }
+        for (let [relay, filters] of filtersByRelay) {
+            let instance = this.addOrGetRelay(relay)
+            if (relays.includes(relay)) {
+                filters = filters.concat(filtersWithoutRelay)
+            }
+            subs.push(instance.sub(filters))
+            relays_for_subs.push(relay)
+        }
+        return new RelayPoolSubscription(subs, relays_for_subs)
     }
 
     publish(event: Event, relays: string[]) {

@@ -18,9 +18,15 @@ let relays = ["wss://relay.damus.io",
 
 let relaypool = new RelayPool(relays)
 
-let sub=relayPool.sub([{
-    authors: '32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245'
-  }], relays)
+// If you pass relay to a filter, it will be requested only from that relay.
+// Filters that don't have relay set will be sent to the passed relays.
+// There will be at most 1 subscription created for each relay even if it's passed multiple times
+//    in relay / relays.
+let sub=relayPool.sub([
+    { authors: '32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245' },
+    { kinds: [0], authors: '0000000035450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245',
+       relay: "wss://nostr.sandwich.farm" }
+    ], relays)
 
 sub.onevent((event, isAfterEose, relayURL) =>
     { console.log(event, isAfterEose, relayURL) })
