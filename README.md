@@ -24,7 +24,8 @@ let relaypool = new RelayPool(relays)
 // There will be at most 1 subscription created for each relay even if it's passed multiple times
 //    in relay / relays.
 //
-// The implementation finds filters in the subscriptions that only differ in 1 key and merges them both on RelayPool level and Relay level.
+// The implementation finds filters in the subscriptions that only differ in 1 key and
+//    merges them both on RelayPool level and Relay level.
 // The merging algorithm is linear in input size (not accidental O(n^2))
 let sub=relayPool.sub([
     { authors: '32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245' },
