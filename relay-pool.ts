@@ -1,4 +1,5 @@
 import type { Event, Filter, Sub } from 'nostr-tools'
+import { mergeSimilarFilters } from './merge-similar-filters'
 import {type Relay, relayInit} from './relay'
 
 let unique = (arr:string[]) => [...new Set(arr)]
@@ -39,6 +40,7 @@ export class RelayPool {
     }
 
     sub(filters:(Filter&{relay?:string})[], relays:string[]) {
+        filters = mergeSimilarFilters(filters)
         relays = unique(relays)
         let subs = []
         let filtersByRelay = new Map<string, Filter[]>()
@@ -64,7 +66,8 @@ export class RelayPool {
             let filters = filtersByRelay.get(relay)
             if (!filters && filtersWithoutRelay.length > 0) {
                 let instance = this.addOrGetRelay(relay)
-                subs.push(instance.sub(filtersWithoutRelay))
+                let mergedFiltersWithoutRelay = mergeSimilarFilters(filtersWithoutRelay)
+                subs.push(instance.sub(mergedFiltersWithoutRelay))
                 relays_for_subs.push(relay)
             }
         }
@@ -73,7 +76,7 @@ export class RelayPool {
             if (relays.includes(relay)) {
                 filters = filters.concat(filtersWithoutRelay)
             }
-            subs.push(instance.sub(filters))
+            subs.push(instance.sub(mergeSimilarFilters(filters)))
             relays_for_subs.push(relay)
         }
         return new RelayPoolSubscription(subs, relays_for_subs)
