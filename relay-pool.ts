@@ -59,6 +59,52 @@ export class RelayPool {
         this.relayByUrl.clear()
     }
 
+    #getCachedEventsByIdWithUpdatedFilter(filter: Filter & {relay?: string, noCache?: boolean, ids: string[]}) :
+            {filter: Filter & {relay?: string}, events: Set<(Event & {id: string})>} {
+        let events = new Set<(Event & {id: string})>()
+        let ids: string[] = []
+        for (let id of filter.ids) {
+            let event = this.cache?.eventsById.get(id)
+            if (event) {
+                events.add(event)
+            } else {
+                ids.push(id)
+            }
+        }
+        return {filter: {...filter, ids}, events}
+    }
+
+    #getCachedEventsByPubKeyWithUpdatedFilter(filter: Filter & {relay?: string, noCache?: boolean, authors: string[], kinds: Kind[]}) :
+        {filter: Filter & {relay?: string}, events: Set<(Event & {id: string})>} {
+        let authors: string[] = []
+        let events = new Set<(Event & {id: string})>()
+        for (let author of filter.authors) {
+            let contactEvent
+            if (filter.kinds.find(kind => kind === Kind.Contacts)) {
+                contactEvent = this.cache?.contactsByPubKey.get(author)
+                if (!contactEvent) {
+                    authors.push(author)
+                    continue
+                }
+            }
+            let metadataEvent
+            if (filter.kinds.find(kind => kind === Kind.Metadata)) {
+                let metadataEvent = this.cache?.metadataByPubKey.get(author)
+                if (!metadataEvent) {
+                    authors.push(author)
+                    continue
+                }
+            }
+            if (contactEvent) {
+                events.add(contactEvent)
+            }
+            if (metadataEvent) {
+                events.add(metadataEvent)
+            }
+        }
+        return {filter: {...filter, authors}, events}
+    }
+
     getCachedEventsWithUpdatedFilters(filters: (Filter & {relay?: string, noCache?: boolean})[],
             relays: string[]) :
             {filters: (Filter & {relay?: string})[], events: (Event & {id: string})[]} {
@@ -68,54 +114,19 @@ export class RelayPool {
         let events : Set<(Event & {id: string})> = new Set()
         let new_filters: (Filter & {relay?: string})[] = []
         for (let filter of filters) {
+            let new_data = {filter, events: []}
             if (filter.ids) {
-                let ids: string[] = []
-                for (let id of filter.ids) {
-                    let event = this.cache?.eventsById.get(id)
-                    if (event) {
-                        events.add(event)
-                    } else {
-                        ids.push(id)
-                    }
-                }
-                new_filters.push({...filter, ids})
-                continue
+                // @ts-ignore
+                new_data = this.#getCachedEventsByIdWithUpdatedFilter(filter)
+            } else if (!filter.noCache && filter.authors && filter.kinds &&
+                    !filter.kinds.find(kind => kind !== Kind.Contacts && kind !== Kind.Metadata)) {
+                // @ts-ignore
+                new_data = this.#getCachedEventsByPubKeyWithUpdatedFilter(filter)
             }
-            if (filter.noCache) {
-                new_filters.push(filter)
-                continue
+            for (let event of new_data.events) {
+                events.add(event)
             }
-            if (filter.authors && filter.kinds && !filter.kinds.find(
-                    kind => kind !== Kind.Contacts && kind !== Kind.Metadata)) {
-                let authors: string[] = []
-                for (let author of filter.authors) {
-                    let contactEvent
-                    if (filter.kinds.find(kind => kind === Kind.Contacts)) {
-                        contactEvent = this.cache?.contactsByPubKey.get(author)
-                        if (!contactEvent) {
-                            authors.push(author)
-                            continue
-                        }
-                    }
-                    let metadataEvent
-                    if (filter.kinds.find(kind => kind === Kind.Metadata)) {
-                        let metadataEvent = this.cache?.metadataByPubKey.get(author)
-                        if (!metadataEvent) {
-                            authors.push(author)
-                            continue
-                        }
-                    }
-                    if (contactEvent) {
-                        events.add(contactEvent)
-                    }
-                    if (metadataEvent) {
-                        events.add(metadataEvent)
-                    }
-                }
-                new_filters.push({...filter, authors})
-                continue
-            }
-            new_filters.push(filter)
+            new_filters.push(new_data.filter)
         }
         return {filters: new_filters, events: [...events]}
     }
