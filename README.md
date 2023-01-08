@@ -28,13 +28,14 @@ let relaypool = new RelayPool(relays)
 // RelayPool::sub(filters: Filter & {relay?: string, noCache?: boolean}, relays: string[]) : Subscription
 //
 // If you set the relay property of a filter, that filter will be requested only from that relay.
-// Filters that don't have relay set will be sent to the passed relays.
+// Filters that don't have relay set will be sent to the relays passed inside the relays parameter.
 // There will be at most 1 subscription created for each relay even if it's passed multiple times
 //    in relay / relays.
 //
 // The implementation finds filters in the subscriptions that only differ in 1 key and
 //    merges them both on RelayPool level and Relay level.
-// The merging algorithm is linear in input size (not accidental O(n^2))
+// The merging algorithm is linear in input size (not accidental O(n^2)).
+// It also removes empty filters that are guaranteed to not match any events.
 // 
 // noCache inside a filter instructs relayPool to never return
 //   cached results for that specific filter, but get them from a subscription.
