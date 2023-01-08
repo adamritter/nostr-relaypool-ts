@@ -166,12 +166,16 @@ export class RelayPool {
         filters = mergeSimilarAndRemoveEmptyFilters(filters)
         relays = unique(relays)
         let filtersByRelay = this.#getFiltersByRelay(filters, relays)
-        let relays_for_subs = []
 
+        let relays_for_subs = []
         let subs = []
         for (let [relay, filters] of filtersByRelay) {
+            let mergedAndRemovedEmptyFilters = mergeSimilarAndRemoveEmptyFilters(filters)
+            if (mergedAndRemovedEmptyFilters.length === 0) {
+                continue
+            }
             let instance = this.addOrGetRelay(relay)
-            subs.push(instance.sub(mergeSimilarAndRemoveEmptyFilters(filters)))
+            subs.push(instance.sub(mergedAndRemovedEmptyFilters))
             relays_for_subs.push(relay)
         }
         return new RelayPoolSubscription(subs, relays_for_subs, this.cache,
