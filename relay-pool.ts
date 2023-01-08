@@ -3,6 +3,12 @@ import { mergeSimilarFilters } from './merge-similar-filters'
 import {type Relay, relayInit} from './relay'
 
 let unique = (arr:string[]) => [...new Set(arr)]
+
+function withoutRelay(filter: Filter & {relay?: string}) : Filter {
+    filter = {...filter}
+    delete filter.relay
+    return filter
+}
 export class RelayPool {
     relayByUrl: Map<string, Relay>
     noticecbs: Array<(msg: string)=>void>
@@ -48,34 +54,31 @@ export class RelayPool {
         for (let filter of filters) {
             let relay = filter.relay
             if (relay) {
-                let filters = filtersByRelay.get(relay)
-                if (filters) {
-                    // @ts-ignore
-                    filters.push({...filter, relay: undefined})
+                let relayFilters = filtersByRelay.get(relay)
+                if (relayFilters) {
+                    relayFilters.push(withoutRelay(filter))
                 } else {
-                    // @ts-ignore
-                    filtersByRelay.set(relay, [{...filter, relay: undefined}])
+                    filtersByRelay.set(relay, [withoutRelay(filter)])
                 }
             } else {
                 filtersWithoutRelay.push(filter)
             }
         }
-        let relays_for_subs = []
-
-        for (let relay of relays) {
-            let filters = filtersByRelay.get(relay)
-            if (!filters && filtersWithoutRelay.length > 0) {
-                let instance = this.addOrGetRelay(relay)
-                let mergedFiltersWithoutRelay = mergeSimilarFilters(filtersWithoutRelay)
-                subs.push(instance.sub(mergedFiltersWithoutRelay))
-                relays_for_subs.push(relay)
+        if (filtersWithoutRelay.length > 0) {
+            for (let relay of relays) {
+                let filters = filtersByRelay.get(relay)
+                if (filters) {
+                    filtersByRelay.set(relay, filters.concat(filtersWithoutRelay))
+                } else {
+                    filtersByRelay.set(relay, filtersWithoutRelay)
+                }
             }
         }
+
+        let relays_for_subs = []
+
         for (let [relay, filters] of filtersByRelay) {
             let instance = this.addOrGetRelay(relay)
-            if (relays.includes(relay)) {
-                filters = filters.concat(filtersWithoutRelay)
-            }
             subs.push(instance.sub(mergeSimilarFilters(filters)))
             relays_for_subs.push(relay)
         }
