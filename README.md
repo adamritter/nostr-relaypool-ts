@@ -62,7 +62,7 @@ sub.onevent((event, isAfterEose, relayURL) =>
 
 // Called for each relay with the events that were received from the particular server
 sub.oneose((events, relayURL) =>
-    { console.log(events, relayURL); sub.unsub() })
+    { console.log(events, relayURL); })
 
 // Other API functions:
 // RelayPool::publish(event: Event, relays: string[])
