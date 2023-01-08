@@ -131,12 +131,7 @@ export class RelayPool {
         return {filters: new_filters, events: [...events]}
     }
 
-    sub(filters:(Filter&{relay?:string})[], relays:string[]) {
-        let cachedEventsWithUpdatedFilters = this.getCachedEventsWithUpdatedFilters(filters, relays)
-        filters = cachedEventsWithUpdatedFilters.filters
-        filters = mergeSimilarAndRemoveEmptyFilters(filters)
-        relays = unique(relays)
-        let subs = []
+    #getFiltersByRelay(filters: (Filter & {relay?: string})[], relays: string[]) : Map<string, Filter[]> {
         let filtersByRelay = new Map<string, Filter[]>()
         let filtersWithoutRelay : Filter[] = []
         for (let filter of filters) {
@@ -162,9 +157,18 @@ export class RelayPool {
                 }
             }
         }
+        return filtersByRelay
+    }
 
+    sub(filters:(Filter&{relay?:string})[], relays:string[]) {
+        let cachedEventsWithUpdatedFilters = this.getCachedEventsWithUpdatedFilters(filters, relays)
+        filters = cachedEventsWithUpdatedFilters.filters
+        filters = mergeSimilarAndRemoveEmptyFilters(filters)
+        relays = unique(relays)
+        let filtersByRelay = this.#getFiltersByRelay(filters, relays)
         let relays_for_subs = []
 
+        let subs = []
         for (let [relay, filters] of filtersByRelay) {
             let instance = this.addOrGetRelay(relay)
             subs.push(instance.sub(mergeSimilarAndRemoveEmptyFilters(filters)))
