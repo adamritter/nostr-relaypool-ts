@@ -39,6 +39,8 @@ let relaypool = new RelayPool(relays)
 // 
 // noCache inside a filter instructs relayPool to never return
 //   cached results for that specific filter, but get them from a subscription.
+// (maybe refresh or revalidate would be a better name, but noCache was selected
+//   as it's defined in the Cache-Control header of the HTTP standard).
 // It may only be useful if kinds 0, 3 are requested.
 
 let sub=relayPool.sub([
