@@ -51,6 +51,12 @@ let sub=relayPool.sub([
        relay: "wss://nostr.sandwich.farm" }
     ], relays)
 
+// As the cached results are sent on the first onevent call, 
+// it's strongly suggested that onevent should be called just after creating the subscription,
+// and called only once.
+//
+// Maybe putting onevent and oneose callbacks inside the sub function call would be a better
+//   API design, but it would make the sub call a bit complex.
 sub.onevent((event, isAfterEose, relayURL) =>
     { console.log(event, isAfterEose, relayURL) })
 
