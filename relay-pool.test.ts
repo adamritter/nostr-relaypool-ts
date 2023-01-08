@@ -153,3 +153,62 @@ test('relay option in filter', () => {
     ])
   ).resolves.toEqual([true, true])
 })
+
+test('cached result', async () => {
+  let sk = generatePrivateKey()
+  let pk = getPublicKey(sk)
+  var resolve1:(success:boolean)=>void
+
+  let sub = relaypool.sub([
+    {
+      kinds: [27572],
+      authors: [pk]
+    }
+  ], relayurls)
+
+  sub.onevent(event => {
+    expect(event).toHaveProperty('pubkey', pk)
+    expect(event).toHaveProperty('kind', 27572)
+    expect(event).toHaveProperty('content', 'nostr-tools test suite')
+    resolve1(true)
+  })
+
+  let event = {
+    kind: 27572,
+    pubkey: pk,
+    created_at: Math.floor(Date.now() / 1000),
+    tags: [],
+    content: 'nostr-tools test suite'
+  }
+  // @ts-ignore
+  event.id = getEventHash(event)
+  // @ts-ignore
+  event.sig = await signEvent(event, sk)
+
+  relaypool.publish(event, relayurls)
+  await expect(new Promise(resolve => {
+    resolve1 = resolve
+  })).resolves.toEqual(true)
+
+  console.log(relaypool.cache)
+
+  sub = relaypool.sub([
+    {
+      // @ts-ignore
+      ids: [event.id]
+    }
+  ], [])
+  let resolve2:(success:boolean)=>void
+
+  let secondOnEvent = new Promise(resolve => {
+    resolve2 = resolve
+  })
+  sub.onevent(event => {
+    expect(event).toHaveProperty('pubkey', pk)
+    expect(event).toHaveProperty('kind', 27572)
+    expect(event).toHaveProperty('content', 'nostr-tools test suite')
+    resolve2(true)
+  })
+
+  return expect(secondOnEvent).resolves.toEqual(true)
+})

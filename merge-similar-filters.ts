@@ -1,7 +1,7 @@
 import { stringify } from 'safe-stable-stringify'
 import type { Filter } from 'nostr-tools'
 
-export function mergeSimilarFilters(filters: Filter[]) : Filter[] {
+export function mergeSimilarAndRemoveEmptyFilters(filters: Filter[]) : Filter[] {
     let r = []
     let indexByFilter = new Map<string, number>()
     for (let filter of filters) {
@@ -9,6 +9,11 @@ export function mergeSimilarFilters(filters: Filter[]) : Filter[] {
         for (let key in filter) {
             // @ts-ignore
             if (filter[key] && (['ids', 'authors', 'kinds'].includes(key) || key.startsWith('#'))) {
+                // @ts-ignore
+                if (filter[key].length === 0) {
+                    added = true
+                    break
+                }
                 let new_filter = {...filter}
                 // @ts-ignore
                 delete new_filter[key]

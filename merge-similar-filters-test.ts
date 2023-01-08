@@ -1,6 +1,6 @@
 /* eslint-env jest */
 
-import { mergeSimilarFilters } from './merge-similar-filters'
+import { mergeSimilarAndRemoveEmptyFilters } from './merge-similar-filters'
 import type { Filter } from 'nostr-tools'
 
 test('Merge filters automatically', () => {
@@ -12,7 +12,7 @@ test('Merge filters automatically', () => {
                                      {'#p': ['p2', 'p3']}
                                     ]
 
-    let result = mergeSimilarFilters(filters)
+    let result = mergeSimilarAndRemoveEmptyFilters(filters)
     expect(result).toEqual([
         {authors: ['pub1', 'pub2'], kinds: [0, 2]},
         {ids: ['1', '5']},
@@ -26,6 +26,16 @@ test("Don't merge filters using different relays and different ids", () => {
                                 {ids: ['2'], relay: 'wss://nostr-dev.wellorder.net/'},
                             ]
 
-    let result = mergeSimilarFilters(filters)
+    let result = mergeSimilarAndRemoveEmptyFilters(filters)
     expect(result).toEqual(filters)
+})
+
+test('Remove empty filters', () => {
+    let filters:(Filter&{relay?: string})[] = [
+                                {ids: []},
+                                {authors: [], relay: 'wss://nostr-dev.wellorder.net/'},
+                            ]
+
+    let result = mergeSimilarAndRemoveEmptyFilters(filters)
+    expect(result).toEqual([])
 })

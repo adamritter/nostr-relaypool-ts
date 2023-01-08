@@ -12,13 +12,20 @@ Usage:
 ```typescript
 import { RelayPool } from 'nostr-relaypool'
 
+
+// RelayPool(relays=[], options={})
+// RelayPool connects to the given relays, but it doesn't determine which relays are used for specific
+//    subscriptions.
+// options:
+// - noCache: turns off caching that of events that is done by default.
 let relays = ["wss://relay.damus.io",
               "wss://nostr.fmt.wiz.biz",
               "wss://nostr.bongbong.com"];
 
-// let relaypool = new RelayPool() is also correct, as relayPool.sub / pub automatically connects to the servers.
 let relaypool = new RelayPool(relays)
 
+// RelayPool::sub(filters: Filter & {relay?: string, noCache?: boolean}, relays: string[]) : Subscription
+//
 // If you pass relay to a filter, it will be requested only from that relay.
 // Filters that don't have relay set will be sent to the passed relays.
 // There will be at most 1 subscription created for each relay even if it's passed multiple times
@@ -27,6 +34,10 @@ let relaypool = new RelayPool(relays)
 // The implementation finds filters in the subscriptions that only differ in 1 key and
 //    merges them both on RelayPool level and Relay level.
 // The merging algorithm is linear in input size (not accidental O(n^2))
+// 
+// noCache inside a filter instructs relayPool never to return cached results for that specific filter,
+// but get them from a subscription. It may only be useful if kinds 0, 3 are requested.
+
 let sub=relayPool.sub([
     { authors: '32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245' },
     { kinds: [0], authors: '0000000035450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245',
