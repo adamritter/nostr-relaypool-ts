@@ -1,5 +1,5 @@
 # nostr-relaypool-ts
-A Nostr RelayPool implementation in TypeScript using only https://github.com/nbd-wtf/nostr-tools library as a dependency 
+A Nostr RelayPool implementation in TypeScript using https://github.com/nbd-wtf/nostr-tools library as a dependency 
 
 Installation:
 
@@ -12,8 +12,7 @@ Usage:
 ```typescript
 import { RelayPool } from 'nostr-relaypool'
 
-
-// RelayPool(relays:string[] = [], options:{noCache?: boolean} ={})
+// RelayPool(relays:string[] = [], options:{noCache?: boolean} = {})
 // RelayPool connects to the given relays, but it doesn't determine which relays are used for specific
 //    subscriptions.
 // It caches all events and returns filtering id and 0 / 3 kinds with requested pubkeys from cache.
