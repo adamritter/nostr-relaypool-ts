@@ -42,6 +42,8 @@ let relaypool = new RelayPool(relays)
 // (maybe refresh or revalidate would be a better name, but noCache was selected
 //   as it's defined in the Cache-Control header of the HTTP standard).
 // It may only be useful if kinds 0, 3 are requested.
+// If no real work would be done by a relay (all filters are satisfied from cache or empty), the subscription
+//    will not be sent (but the cached events will be sent instantly at the first onevent call).
 
 let sub=relayPool.sub([
     { authors: '32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245' },
