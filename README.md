@@ -13,11 +13,13 @@ Usage:
 import { RelayPool } from 'nostr-relaypool'
 
 
-// RelayPool(relays=[], options={})
+// RelayPool(relays:string[] = [], options:{noCache?: boolean} ={})
 // RelayPool connects to the given relays, but it doesn't determine which relays are used for specific
 //    subscriptions.
+// It caches all events and returns filtering id and 0 / 3 kinds with requested pubkeys from cache.
+//
 // options:
-// - noCache: turns off caching that of events that is done by default.
+//   - noCache: turns off caching that of events that is done by default.
 let relays = ["wss://relay.damus.io",
               "wss://nostr.fmt.wiz.biz",
               "wss://nostr.bongbong.com"];
@@ -35,8 +37,9 @@ let relaypool = new RelayPool(relays)
 //    merges them both on RelayPool level and Relay level.
 // The merging algorithm is linear in input size (not accidental O(n^2))
 // 
-// noCache inside a filter instructs relayPool never to return cached results for that specific filter,
-// but get them from a subscription. It may only be useful if kinds 0, 3 are requested.
+// noCache inside a filter instructs relayPool to never return
+//   cached results for that specific filter, but get them from a subscription.
+// It may only be useful if kinds 0, 3 are requested.
 
 let sub=relayPool.sub([
     { authors: '32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245' },
