@@ -27,7 +27,7 @@ let relaypool = new RelayPool(relays)
 
 // RelayPool::sub(filters: Filter & {relay?: string, noCache?: boolean}, relays: string[]) : Subscription
 //
-// If you pass relay to a filter, it will be requested only from that relay.
+// If you set the relay property of a filter, that filter will be requested only from that relay.
 // Filters that don't have relay set will be sent to the passed relays.
 // There will be at most 1 subscription created for each relay even if it's passed multiple times
 //    in relay / relays.
