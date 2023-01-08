@@ -13,7 +13,7 @@ Usage:
 import { RelayPool } from 'nostr-relaypool'
 
 
-// RelayPool(relays=[], options={})
+// RelayPool(relays:string[] = [], options:{noCache?: boolean} ={})
 // RelayPool connects to the given relays, but it doesn't determine which relays are used for specific
 //    subscriptions.
 // It caches all events and returns filtering id and 0 / 3 kinds with requested pubkeys from cache.
