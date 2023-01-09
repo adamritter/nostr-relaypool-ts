@@ -160,26 +160,58 @@ export class RelayPool {
         return filtersByRelay
     }
 
-    sub(filters:(Filter&{relay?:string})[], relays:string[]) {
+    #addEventToCache(event: Event & {id: string}) {
+        if (this.cache) {
+            this.cache.eventsById.set(event.id, event)
+            if (event.kind === Kind.Metadata) {
+                this.cache.metadataByPubKey.set(event.pubkey, event)
+            }
+            if (event.kind === Kind.Contacts) {
+                this.cache.contactsByPubKey.set(event.pubkey, event)
+            }
+        }
+    }
+
+    subscribe(filters:(Filter&{relay?:string})[], relays:string[],
+            onEvent: (event: Event & {id: string}, afterEose: boolean, url:string|undefined)=>void,
+            onEose?: (eventsByThisSub: (Event&{id: string})[]|undefined, url:string)=>void)
+            : () => void {
         let cachedEventsWithUpdatedFilters = this.getCachedEventsWithUpdatedFilters(filters, relays)
+        for (let event of cachedEventsWithUpdatedFilters.events) {
+            onEvent(event, false, undefined)
+        }
         filters = cachedEventsWithUpdatedFilters.filters
         filters = mergeSimilarAndRemoveEmptyFilters(filters)
         relays = unique(relays)
         let filtersByRelay = this.#getFiltersByRelay(filters, relays)
 
-        let relays_for_subs = []
-        let subs = []
+        let subs : Sub[] = []
         for (let [relay, filters] of filtersByRelay) {
             let mergedAndRemovedEmptyFilters = mergeSimilarAndRemoveEmptyFilters(filters)
             if (mergedAndRemovedEmptyFilters.length === 0) {
                 continue
             }
             let instance = this.addOrGetRelay(relay)
-            subs.push(instance.sub(mergedAndRemovedEmptyFilters))
-            relays_for_subs.push(relay)
+            let sub = instance.sub(mergedAndRemovedEmptyFilters)
+            subs.push(sub)
+            let eventsBySub: (Event & {id: string})[] | undefined = []
+            sub.on('event', (event: Event & {id: string}) => {
+                this.#addEventToCache(event)
+                eventsBySub?.push(event)
+                onEvent(event, eventsBySub === undefined, relay)
+            })
+            if (onEose) {
+                sub.on('eose', () => {
+                    onEose(eventsBySub, relay)
+                    eventsBySub = undefined
+                })
+            }
         }
-        return new RelayPoolSubscription(subs, relays_for_subs, this.cache,
-                cachedEventsWithUpdatedFilters.events)
+        return () => {
+            for (let sub of subs) {
+                sub.unsub()
+            }
+        }
     }
 
     publish(event: Event, relays: string[]) {
@@ -199,65 +231,5 @@ export class RelayPool {
         this.relayByUrl.forEach((relay: Relay, url: string) =>
              relay.on('disconnect', (msg: string) =>
                 cb(url + ': ' + msg)))
-    }
-}
-
-export class RelayPoolSubscription {
-    subscriptions: Sub[]
-    eventsBySub: Map<Sub, (Event&{id:string})[]>
-    urlsBySub: Map<Sub, string>
-    cache?: Cache
-    cachedEvents?: (Event&{id:string})[]
-    constructor(subscriptions:Sub[], urls: string[], cache?: Cache, cachedEvents?: (Event&{id:string})[]) {
-        this.subscriptions = subscriptions
-        this.eventsBySub = new Map()
-        this.urlsBySub = new Map()
-        this.cache = cache
-        this.cachedEvents = cachedEvents
-        for (let i = 0; i < subscriptions.length; i++) {
-            this.urlsBySub.set(subscriptions[i], urls[i])
-        }
-    }
-    onevent(cb: (event: Event & {id: string}, afterEose: boolean, url:string|null)=>void) : ()=>void {
-        for (let event of this.cachedEvents || []) {
-            cb(event, false, null)
-        }
-        this.subscriptions.forEach(subscription => {
-            this.eventsBySub.set(subscription, [])
-            subscription.on('event', (event: Event & {id: string}) => {
-                if (this.cache) {
-                    this.cache.eventsById.set(event.id, event)
-                    if (event.kind === Kind.Metadata) {
-                        this.cache.metadataByPubKey.set(event.pubkey, event)
-                    }
-                    if (event.kind === Kind.Contacts) {
-                        this.cache.contactsByPubKey.set(event.pubkey, event)
-                    }
-                }
-                let eventsByThisSub = this.eventsBySub.get(subscription)
-                if (eventsByThisSub) {
-                    eventsByThisSub.push(event)
-                }
-                // @ts-ignore
-                cb(event, eventsByThisSub === undefined, this.urlsBySub.get(subscription))
-            })
-        })
-        return () => {
-            this.subscriptions.forEach(subscription => subscription.off('event', cb))
-        }
-    }
-    oneose(cb: (eventsByThisSub: (Event&{id: string})[]|undefined, url:string)=>void) : ()=>void {
-        this.subscriptions.forEach(subscription => subscription.on('eose', () => {
-            let eventsByThisSub = this.eventsBySub.get(subscription)
-            this.eventsBySub.delete(subscription)
-            // @ts-ignore
-            cb(eventsByThisSub, this.urlsBySub.get(subscription))
-        }))
-        return () => {
-            this.subscriptions.forEach(subscription => subscription.off('eose', cb))
-        }
-    }
-    unsub() {
-      this.subscriptions.forEach(subscription => subscription.unsub())
     }
 }
