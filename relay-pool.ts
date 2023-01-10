@@ -172,6 +172,31 @@ export class RelayPool {
         }
     }
 
+    #handleSubscription(relay : string, filters: Filter[],
+        onEvent: (event: Event & {id: string}, afterEose: boolean, url:string|undefined)=>void,
+        onEose?: (eventsByThisSub: (Event&{id: string})[]|undefined, url:string)=>void
+    ) : Sub | undefined {
+        let mergedAndRemovedEmptyFilters = mergeSimilarAndRemoveEmptyFilters(filters)
+        if (mergedAndRemovedEmptyFilters.length === 0) {
+            return
+        }
+        let instance = this.addOrGetRelay(relay)
+        let sub = instance.sub(mergedAndRemovedEmptyFilters)
+        let eventsBySub: (Event & {id: string})[] | undefined = []
+        sub.on('event', (event: Event & {id: string}) => {
+            this.#addEventToCache(event)
+            eventsBySub?.push(event)
+            onEvent(event, eventsBySub === undefined, relay)
+        })
+        if (onEose) {
+            sub.on('eose', () => {
+                onEose(eventsBySub, relay)
+                eventsBySub = undefined
+            })
+        }
+        return sub
+    }
+
     subscribe(filters:(Filter&{relay?:string})[], relays:string[],
             onEvent: (event: Event & {id: string}, afterEose: boolean, url:string|undefined)=>void,
             onEose?: (eventsByThisSub: (Event&{id: string})[]|undefined, url:string)=>void)
@@ -187,24 +212,9 @@ export class RelayPool {
 
         let subs : Sub[] = []
         for (let [relay, filters] of filtersByRelay) {
-            let mergedAndRemovedEmptyFilters = mergeSimilarAndRemoveEmptyFilters(filters)
-            if (mergedAndRemovedEmptyFilters.length === 0) {
-                continue
-            }
-            let instance = this.addOrGetRelay(relay)
-            let sub = instance.sub(mergedAndRemovedEmptyFilters)
-            subs.push(sub)
-            let eventsBySub: (Event & {id: string})[] | undefined = []
-            sub.on('event', (event: Event & {id: string}) => {
-                this.#addEventToCache(event)
-                eventsBySub?.push(event)
-                onEvent(event, eventsBySub === undefined, relay)
-            })
-            if (onEose) {
-                sub.on('eose', () => {
-                    onEose(eventsBySub, relay)
-                    eventsBySub = undefined
-                })
+            let sub = this.#handleSubscription(relay, filters, onEvent, onEose)
+            if (sub) {
+                subs.push(sub)
             }
         }
         return () => {
