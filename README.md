@@ -25,7 +25,7 @@ import { RelayPool } from 'nostr-relaypool'
 // It caches all events and returns filtering id and 0 / 3 kinds with requested pubkeys from cache.
 //
 // options:
-//   - noCache: turns off caching that of events that is done by default.
+//   - noCache: turns off caching of events that is done by default.
 let relays = ["wss://relay.damus.io",
               "wss://nostr.fmt.wiz.biz",
               "wss://nostr.bongbong.com"];
