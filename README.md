@@ -64,9 +64,10 @@ let relaypool = new RelayPool(relays)
 //      all the specified relays.
 //  onevent: Other RelayPool implementations allow calling onevent multiple times
 //      on a Subscription class, which was the original design in this library as well, but
-//      since caching is implemented, it's safer API design to pass onevent inside the subscribe call.
+//      since caching is implemented, it's safer API design to pass onevent inside the
+//        subscribe call.
 //      Events that are read from the cache will be called back immediately 
-//      with relayURL === undefined.
+//        with relayURL === undefined.
 //      isAfterEose is true if the event was recieved from a relay after the EOSE message.
 //      isAfterEose is always false for cached events.
 //  oneose: called for each EOSE event received from a relay with the events
