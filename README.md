@@ -20,8 +20,8 @@ Usage:
 import { RelayPool } from 'nostr-relaypool'
 
 // RelayPool(relays:string[] = [], options:{noCache?: boolean} = {})
-// RelayPool constructor connects to the given relays, but it doesn't determine which relays are used for specific
-//    subscriptions.
+// RelayPool constructor connects to the given relays, but it doesn't determine
+//    which relays are used for specific subscriptions.
 // It caches all events and returns filtering id and 0 / 3 kinds with requested pubkeys from cache.
 //
 // options:
@@ -34,7 +34,8 @@ let relaypool = new RelayPool(relays)
 
 // RelayPool::subscribe(filters: Filter & {relay?: string, noCache?: boolean},
 //                      relays: string[],
-//                      onevent: (event: Event & {id: string}, isAfterEose: boolean, relayURL: string | undefined) => void,
+//                      onevent: (event: Event & {id: string}, isAfterEose: boolean,
+//                          relayURL: string | undefined) => void,
 //                      oneose: (events, relayURL) => void) : () => void
 //
 // Creates a subscription to a list of filters and sends them to a pool of relays if
@@ -42,9 +43,9 @@ let relaypool = new RelayPool(relays)
 //
 // filters: 
 //    If the relay property of a filter is set, that filter will be requested only from that relay.
-//    Filters that don't have relay set will be sent to the relays passed inside the relays parameter.
-//    There will be at most 1 subscription created for each relay even if it's passed multiple times
-//        in relay / relays.
+//    Filters that don't have relay set will be sent to the relays passed inside
+//    the relays parameter. There will be at most 1 subscription created for each relay
+//    even if it's passed multiple times in relay / relays.
 //
 //     The implementation finds filters in the subscriptions that only differ in 1 key and
 //         merges them both on RelayPool level and Relay level.
@@ -59,13 +60,15 @@ let relaypool = new RelayPool(relays)
 //      If no real work would be done by a relay (all filters are satisfied from cache or empty),
 //    the subscription will not be sent
 //       (but the cached events will be provided instantly using the onEvent callback).
-//  relays: Events for filters that have no relay field set will be requested from all the specified relays.
-//  onevent: Other RelayPool implementations allow calling onevent multiple times on a Subscription
-//      class, which was the original design in this library as well, but since caching is implemented,
-//      it's safer API design to pass onevent inside the subscribe call.
-//      Events that are read from the cache will be called back immediately with relayURL === undefined.
+//  relays: Events for filters that have no relay field set will be requested from
+//      all the specified relays.
+//  onevent: Other RelayPool implementations allow calling onevent multiple times
+//      on a Subscription class, which was the original design in this library as well, but
+//      since caching is implemented, it's safer API design to pass onevent inside the subscribe call.
+//      Events that are read from the cache will be called back immediately 
+//      with relayURL === undefined.
 //      isAfterEose is true if the event was recieved from a relay after the EOSE message.
-//          isAfterEose is always false for cached events.
+//      isAfterEose is always false for cached events.
 //  oneose: called for each EOSE event received from a relay with the events
 //       that were received from the particular server.
 let unsub=relayPool.subscribe([
