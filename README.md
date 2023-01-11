@@ -1,10 +1,24 @@
 # nostr-relaypool-ts
-A Nostr RelayPool implementation in TypeScript using https://github.com/nbd-wtf/nostr-tools library as a dependency. Its main goal is to make it simpler to build a client on top of it than just a dumb
-RelayPool implementation.
+A Nostr RelayPool implementation in TypeScript using https://github.com/nbd-wtf/nostr-tools library as a dependency. 
 
-Caching and merging filters on subscriptions and not emitting duplicate events are already implemented,
-but the next big usability impovement coming soon will be delayed subscriptions,
-that allow clients to request data from different components, and let the RelayPool implementation
+Its main goal is to make it simpler to build a client on top of it than just a dumb RelayPool implementation.
+
+Features (all features are turned on by default, but can be turned off if needed):
+  - Caching events: every event searched by id or event of Metadata or Contacts kind are cached.
+    Returning cached data can be turned off for each filter
+  - Merging filters: separate filters with the same type of query (like asking for different authors with the same
+    kinds) are automatically merged for every subscription request to decrease the number of filters,
+    as the server usually handles it better.
+  - Deleting empty filters: filters with no possible match are deleted, and subscription is not even created if there
+    would be no valid event.
+  - Duplicate events from cache / different relays are emitted only once
+  - If an event with kind 0 / 3 is emitted, older events with the same author and kind are not emitted. The last
+    emitted event with that kind and author is always the freshest.
+
+Next prioritized feature for 0.4 release:
+
+The next big usability impovement coming soon will be delayed subscriptions,
+that allows clients to request data from different components, and let the RelayPool implementation
 merge, deduplicate, prioritize, cache these requests and split the replies to send to each subscription
 from the clients.
 
