@@ -25,6 +25,19 @@ function doNotEmitDuplicateEvents(onEvent: (event: Event & {id: string}, afterEo
         onEvent(event, afterEose, url)
     }
 }
+
+function doNotEmitOlderEvents(onEvent: (event: Event & {id: string}, afterEose: boolean, url:string|undefined)=>void) :
+        ((event: Event & {id: string}, afterEose: boolean, url:string|undefined)=>void) {
+    let created_at_by_events_kinds = new Map()
+    return (event: Event & {id: string}, afterEose: boolean, url:string|undefined) => {
+        if (event.kind === Kind.Metadata || event.kind === Kind.Contacts) {
+            let event_kind = event.pubkey + ' ' + event.kind
+            if ((created_at_by_events_kinds.get(event_kind) || 0) > event.created_at) return
+            created_at_by_events_kinds.set(event_kind, event.created_at)
+        }
+        onEvent(event, afterEose, url)
+    }
+}
 export class RelayPool {
     relayByUrl: Map<string, Relay>
     noticecbs: Array<(msg: string)=>void>
@@ -210,11 +223,14 @@ export class RelayPool {
     subscribe(filters:(Filter&{relay?:string})[], relays:string[],
             onEvent: (event: Event & {id: string}, afterEose: boolean, url:string|undefined)=>void,
             onEose?: (eventsByThisSub: (Event&{id: string})[]|undefined, url:string)=>void,
-            options: {allowDuplicateEvents?: boolean} = {})
+            options: {allowDuplicateEvents?: boolean, allowOlderEvents?: boolean} = {})
             : () => void {
         let cachedEventsWithUpdatedFilters = this.getCachedEventsWithUpdatedFilters(filters, relays)
         if (!options.allowDuplicateEvents) {
             onEvent = doNotEmitDuplicateEvents(onEvent)
+        }
+        if (!options.allowOlderEvents) {
+            onEvent = doNotEmitOlderEvents(onEvent)
         }
         for (let event of cachedEventsWithUpdatedFilters.events) {
             onEvent(event, false, undefined)

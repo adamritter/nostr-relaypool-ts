@@ -197,3 +197,85 @@ test('cached result', async () => {
 
   return expect(secondOnEvent).resolves.toEqual(true)
 })
+
+test('remove duplicates', async () => {
+  let sk = generatePrivateKey()
+  let pk = getPublicKey(sk)
+
+  let event = {
+    kind: 27572,
+    pubkey: pk,
+    created_at: Math.floor(Date.now() / 1000),
+    tags: [],
+    content: 'nostr-tools test suite'
+  }
+  // @ts-ignore
+  event.id = getEventHash(event)
+  // @ts-ignore
+  event.sig = await signEvent(event, sk)
+
+  relaypool.publish(event, relayurls)
+
+
+  await expect(new Promise(resolve => {
+    relaypool.subscribe([
+      {
+        kinds: [27572],
+        authors: [pk]
+      }
+    ], relayurls,
+    event => {
+      expect(event).toHaveProperty('pubkey', pk)
+      expect(event).toHaveProperty('kind', 27572)
+      expect(event).toHaveProperty('content', 'nostr-tools test suite')
+      resolve(true)
+    })
+  })).resolves.toEqual(true)
+
+  console.log(relaypool.cache)
+
+  let counter = 0
+  let secondOnEvent = new Promise(resolve => {
+    relaypool.subscribe([
+      {
+        // @ts-ignore
+        ids: [event.id]
+      }
+    ], relayurls,
+    event => {
+      expect(event).toHaveProperty('pubkey', pk)
+      expect(event).toHaveProperty('kind', 27572)
+      expect(event).toHaveProperty('content', 'nostr-tools test suite')
+      counter += 1
+      if (counter === 2) {
+        resolve(true)
+      }
+    }, undefined, {allowDuplicateEvents: true})
+  })
+
+  expect(secondOnEvent).resolves.toEqual(true)
+
+
+  let counter2 = 0
+  let thirdOnEvent = new Promise(resolve => {
+    relaypool.subscribe([
+      {
+        // @ts-ignore
+        ids: [event.id]
+      }
+    ], relayurls,
+    event => {
+      expect(event).toHaveProperty('pubkey', pk)
+      expect(event).toHaveProperty('kind', 27572)
+      expect(event).toHaveProperty('content', 'nostr-tools test suite')
+      counter2 += 1
+      if (counter2 === 2) {
+        resolve(true)
+      }
+    })
+  })
+
+  return expect(Promise.race([
+    thirdOnEvent,
+    new Promise(resolve => setTimeout(() => resolve(-1), 2000)) ])).resolves.toEqual(-1)
+})

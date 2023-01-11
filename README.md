@@ -116,6 +116,9 @@ new data is required from those relays.
 
   - allowDuplicateEvents: by default duplicate events with the same id are filtered out.
         This option removes duplicate event filtering.
+  
+  - allowOlderEvents: if a subscription emitted an event with kind 0 or 3 (metadata / contacts),
+    it doesn't allow emitting older events by default. This option overrides that filter.
 
 
 Other API functions:
