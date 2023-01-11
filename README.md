@@ -2,7 +2,7 @@
 A Nostr RelayPool implementation in TypeScript using https://github.com/nbd-wtf/nostr-tools library as a dependency. Its main goal is to make it simpler to build a client on top of it than just a dumb
 RelayPool implementation.
 
-Caching and merging filters on subscriptions are already implemented,
+Caching and merging filters on subscriptions and not emitting duplicate events are already implemented,
 but the next big usability impovement coming soon will be delayed subscriptions,
 that allow clients to request data from different components, and let the RelayPool implementation
 merge, deduplicate, prioritize, cache these requests and split the replies to send to each subscription
@@ -111,6 +111,11 @@ new data is required from those relays.
 
 - oneose: called for each EOSE event received from a relay with the events
        that were received from the particular server.
+
+- options:
+
+  - allowDuplicateEvents: by default duplicate events with the same id are filtered out.
+        This option removes duplicate event filtering.
 
 
 Other API functions:

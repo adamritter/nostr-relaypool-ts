@@ -15,6 +15,16 @@ type Cache = {
     metadataByPubKey: Map<string, Event & {id: string}>
     contactsByPubKey: Map<string, Event & {id: string}>
 }
+
+function doNotEmitDuplicateEvents(onEvent: (event: Event & {id: string}, afterEose: boolean, url:string|undefined)=>void) :
+        ((event: Event & {id: string}, afterEose: boolean, url:string|undefined)=>void) {
+    let event_ids = new Set()
+    return (event: Event & {id: string}, afterEose: boolean, url:string|undefined) => {
+        if (event_ids.has(event.id)) return
+        event_ids.add(event.id)
+        onEvent(event, afterEose, url)
+    }
+}
 export class RelayPool {
     relayByUrl: Map<string, Relay>
     noticecbs: Array<(msg: string)=>void>
@@ -199,9 +209,13 @@ export class RelayPool {
 
     subscribe(filters:(Filter&{relay?:string})[], relays:string[],
             onEvent: (event: Event & {id: string}, afterEose: boolean, url:string|undefined)=>void,
-            onEose?: (eventsByThisSub: (Event&{id: string})[]|undefined, url:string)=>void)
+            onEose?: (eventsByThisSub: (Event&{id: string})[]|undefined, url:string)=>void,
+            options: {allowDuplicateEvents?: boolean} = {})
             : () => void {
         let cachedEventsWithUpdatedFilters = this.getCachedEventsWithUpdatedFilters(filters, relays)
+        if (!options.allowDuplicateEvents) {
+            onEvent = doNotEmitDuplicateEvents(onEvent)
+        }
         for (let event of cachedEventsWithUpdatedFilters.events) {
             onEvent(event, false, undefined)
         }
