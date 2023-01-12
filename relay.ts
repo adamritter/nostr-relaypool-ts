@@ -67,6 +67,10 @@ export function relayInit(url: string): Relay {
       ws = new WebSocket(url)
 
       ws.onopen = () => {
+        if (resolveClose) {
+          resolveClose()
+          return
+        }
         connected = true
         for (let subid in openSubs) {
             trySend(['REQ', subid, ...openSubs[subid].filters])
@@ -279,12 +283,10 @@ export function relayInit(url: string): Relay {
     close(): Promise<void> {
       if (connected) {
         ws.close()
-        return new Promise<void>(resolve => {
-          resolveClose = resolve
-        })
-      } else {
-        return Promise.resolve()
       }
+      return new Promise<void>(resolve => {
+        resolveClose = resolve
+      })
     },
     get status() {
       return ws?.readyState ?? 3
