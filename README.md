@@ -4,7 +4,7 @@ A Nostr RelayPool implementation in TypeScript using https://github.com/nbd-wtf/
 Its main goal is to make it simpler to build a client on top of it than just a dumb RelayPool implementation.
 
 Features (all features are turned on by default, but can be turned off if needed):
-  - Caching events: every event searched by id or event of Metadata or Contacts kind are cached.
+  - Caching events: every event searched by id or event of Metadata or Contacts kind are cached in memory.
     Returning cached data can be turned off for each filter
   - Merging filters: separate filters with the same type of query (like asking for different authors with the same
     kinds) are automatically merged for every subscription request to decrease the number of filters,
