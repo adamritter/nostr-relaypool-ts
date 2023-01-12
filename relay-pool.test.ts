@@ -8,6 +8,8 @@ import {RelayPool} from './relay-pool'
 let relaypool: RelayPool
 
 let relayurls = ['wss://nostr-dev.wellorder.net/']
+let relayurls2 = ['wss://nostr.v0l.io/']
+
 
 beforeEach(() => {
   relaypool = new RelayPool(relayurls)
@@ -178,8 +180,6 @@ test('cached result', async () => {
     })
   })).resolves.toEqual(true)
 
-  console.log(relaypool.cache)
-
   let secondOnEvent = new Promise(resolve => {
     relaypool.subscribe([
       {
@@ -214,8 +214,21 @@ test('remove duplicates', async () => {
   // @ts-ignore
   event.sig = await signEvent(event, sk)
 
-  relaypool.publish(event, relayurls)
-
+  await expect(new Promise(resolve => {
+    relaypool.subscribe([
+      {
+        kinds: [27572],
+        authors: [pk]
+      }
+    ], relayurls,
+    (event, afterEose, url) => {
+      expect(event).toHaveProperty('pubkey', pk)
+      expect(event).toHaveProperty('kind', 27572)
+      expect(event).toHaveProperty('content', 'nostr-tools test suite')
+      resolve(true)
+    })
+    relaypool.publish(event, relayurls)
+  })).resolves.toEqual(true)
 
   await expect(new Promise(resolve => {
     relaypool.subscribe([
@@ -224,25 +237,26 @@ test('remove duplicates', async () => {
         authors: [pk]
       }
     ], relayurls,
-    event => {
+    (event, afterEose, url) => {
       expect(event).toHaveProperty('pubkey', pk)
       expect(event).toHaveProperty('kind', 27572)
       expect(event).toHaveProperty('content', 'nostr-tools test suite')
       resolve(true)
     })
+    relaypool.publish(event, relayurls)
   })).resolves.toEqual(true)
 
-  console.log(relaypool.cache)
-
   let counter = 0
-  let secondOnEvent = new Promise(resolve => {
+  await expect(new Promise(resolve => {
     relaypool.subscribe([
       {
         // @ts-ignore
-        ids: [event.id]
+        kinds: [27572],
+        authors: [pk],
+        noCache: true
       }
-    ], relayurls,
-    event => {
+    ], [...relayurls, ...relayurls2],
+    (event, afterEose, url) => {
       expect(event).toHaveProperty('pubkey', pk)
       expect(event).toHaveProperty('kind', 27572)
       expect(event).toHaveProperty('content', 'nostr-tools test suite')
@@ -251,20 +265,19 @@ test('remove duplicates', async () => {
         resolve(true)
       }
     }, undefined, {allowDuplicateEvents: true})
-  })
-
-  expect(secondOnEvent).resolves.toEqual(true)
-
+    relaypool.publish(event, relayurls)
+    relaypool.publish(event, relayurls2)
+  })).resolves.toEqual(true)
 
   let counter2 = 0
   let thirdOnEvent = new Promise(resolve => {
     relaypool.subscribe([
       {
         // @ts-ignore
-        ids: [event.id]
+        authors: [pk]
       }
-    ], relayurls,
-    event => {
+    ], [...relayurls, ...relayurls2],
+    (event, afterEose, url) => {
       expect(event).toHaveProperty('pubkey', pk)
       expect(event).toHaveProperty('kind', 27572)
       expect(event).toHaveProperty('content', 'nostr-tools test suite')
@@ -273,9 +286,62 @@ test('remove duplicates', async () => {
         resolve(true)
       }
     })
+    relaypool.publish(event, relayurls)
+    relaypool.publish(event, relayurls2)
   })
 
   return expect(Promise.race([
     thirdOnEvent,
     new Promise(resolve => setTimeout(() => resolve(-1), 2000)) ])).resolves.toEqual(-1)
+})
+
+
+test('cache authors', async () => {
+  let sk = generatePrivateKey()
+  let pk = getPublicKey(sk)
+
+  let event = {
+    kind: 27572,
+    pubkey: pk,
+    created_at: Math.floor(Date.now() / 1000),
+    tags: [],
+    content: 'nostr-tools test suite'
+  }
+  // @ts-ignore
+  event.id = getEventHash(event)
+  // @ts-ignore
+  event.sig = await signEvent(event, sk)
+
+  await expect(new Promise(resolve => {
+    relaypool.subscribe([
+      {
+        kinds: [27572],
+        authors: [pk]
+      }
+    ], relayurls2,
+    (event, afterEose, url) => {
+      expect(event).toHaveProperty('pubkey', pk)
+      expect(event).toHaveProperty('kind', 27572)
+      expect(event).toHaveProperty('content', 'nostr-tools test suite')
+      resolve(true)
+    })
+    relaypool.publish(event, relayurls2)
+  })).resolves.toEqual(true)
+
+  return expect(new Promise(resolve => {
+    relaypool.subscribe([
+      {
+        kinds: [27572],
+        authors: [pk]
+      }
+    ], relayurls2,
+    (event, afterEose, url) => {
+      expect(event).toHaveProperty('pubkey', pk)
+      expect(event).toHaveProperty('kind', 27572)
+      expect(event).toHaveProperty('content', 'nostr-tools test suite')
+      expect(url).toEqual(relayurls2[0])
+      resolve(true)
+    })
+    relaypool.publish(event, relayurls2)
+  })).resolves.toEqual(true)
 })

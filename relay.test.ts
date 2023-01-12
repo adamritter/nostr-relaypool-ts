@@ -9,7 +9,7 @@ import {relayInit} from './relay'
 let relay:Relay
 
 beforeEach(() => {
-  relay = relayInit('wss://nostr-dev.wellorder.net/')
+  relay = relayInit('wss://nostr.v0l.io/')
   relay.connect()
 })
 
@@ -111,4 +111,58 @@ test('listening (twice) and publishing', async () => {
       })
     ])
   ).resolves.toEqual([true, true])
+})
+
+
+test('two subscriptions', async () => {
+  let sk = generatePrivateKey()
+  let pk = getPublicKey(sk)
+
+  let event = {
+    kind: 27572,
+    pubkey: pk,
+    created_at: Math.floor(Date.now() / 1000),
+    tags: [],
+    content: 'nostr-tools test suite'
+  }
+  // @ts-ignore
+  event.id = getEventHash(event)
+  // @ts-ignore
+  event.sig = await signEvent(event, sk)
+
+  await expect(new Promise(resolve => {
+    let sub = relay.sub([
+      {
+        kinds: [27572],
+        authors: [pk]
+      }
+    ])
+
+    sub.on('event', (event:Event) => {
+      expect(event).toHaveProperty('pubkey', pk)
+      expect(event).toHaveProperty('kind', 27572)
+      expect(event).toHaveProperty('content', 'nostr-tools test suite')
+      resolve(true)
+    })
+  relay.publish(event)
+  })).resolves.toEqual(true)
+
+
+  await expect(new Promise(resolve => {
+    let sub = relay.sub([
+      {
+        kinds: [27572],
+        authors: [pk]
+      }
+    ])
+
+
+    sub.on('event', (event:Event) => {
+      expect(event).toHaveProperty('pubkey', pk)
+      expect(event).toHaveProperty('kind', 27572)
+      expect(event).toHaveProperty('content', 'nostr-tools test suite')
+      resolve(true)
+    })
+    relay.publish(event)
+  })).resolves.toEqual(true)
 })

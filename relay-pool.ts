@@ -75,11 +75,13 @@ export class RelayPool {
         return relayInstance
     }
 
-    close() {
+    async close() {
+        let promises = []
         for (let relayInstance of this.relayByUrl.values()) {
-            relayInstance.close()
+            promises.push(relayInstance.close())
         }
         this.relayByUrl.clear()
+        return Promise.all(promises)
     }
 
     #getCachedEventsByIdWithUpdatedFilter(filter: Filter & {relay?: string, noCache?: boolean, ids: string[]}) :
@@ -220,7 +222,7 @@ export class RelayPool {
         return sub
     }
 
-    subscribe(filters:(Filter&{relay?:string})[], relays:string[],
+    subscribe(filters:(Filter&{relay?:string, noCache?: boolean})[], relays:string[],
             onEvent: (event: Event & {id: string}, afterEose: boolean, url:string|undefined)=>void,
             onEose?: (eventsByThisSub: (Event&{id: string})[]|undefined, url:string)=>void,
             options: {allowDuplicateEvents?: boolean, allowOlderEvents?: boolean} = {})

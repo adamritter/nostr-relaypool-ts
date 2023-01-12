@@ -277,10 +277,14 @@ export function relayInit(url: string): Relay {
     },
     connect,
     close(): Promise<void> {
-      ws.close()
-      return new Promise<void>(resolve => {
-        resolveClose = resolve
-      })
+      if (connected) {
+        ws.close()
+        return new Promise<void>(resolve => {
+          resolveClose = resolve
+        })
+      } else {
+        return Promise.resolve()
+      }
     },
     get status() {
       return ws?.readyState ?? 3
