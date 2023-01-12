@@ -81,7 +81,7 @@ options:
                       onevent: (event: Event & {id: string}, isAfterEose: boolean,
                           relayURL: string | undefined) => void,
                       oneose?: (events, relayURL) => void,
-                      options: {allowDuplicateEvents?: boolean, allowOlderEvents?: boolean} = {})
+                      options: {allowDuplicateEvents?: boolean, allowOlderEvents?: boolean} = {}
               ) : () => void
 ```
 Creates a subscription to a list of filters and sends them to a pool of relays if
