@@ -222,6 +222,21 @@ export class RelayPool {
         return sub
     }
 
+    #handleFiltersByRelay(filtersByRelay: Map<string, Filter[]>,
+            onEvent: (event: Event & {id: string}, afterEose: boolean, url:string|undefined)=>void,
+            onEose?: (eventsByThisSub: (Event&{id: string})[]|undefined, url:string)=>void) : Sub[] {
+        let subs = []
+        for (let [relay, filters] of filtersByRelay) {
+            let sub = this.#handleSubscription(relay, filters, onEvent, onEose)
+            if (sub) {
+                subs.push(sub)
+            }
+        }
+        return subs
+    }
+    // #getCachedDeduplicatedFiltersByRelay(filters: (Filter & {relay?: string, noCache?: boolean})[],
+            // relays: string[]) : Map<string, Filter[]> {
+        // }
     subscribe(filters:(Filter&{relay?:string, noCache?: boolean})[], relays:string[],
             onEvent: (event: Event & {id: string}, afterEose: boolean, url:string|undefined)=>void,
             onEose?: (eventsByThisSub: (Event&{id: string})[]|undefined, url:string)=>void,
@@ -241,14 +256,7 @@ export class RelayPool {
         filters = mergeSimilarAndRemoveEmptyFilters(filters)
         relays = unique(relays)
         let filtersByRelay = this.#getFiltersByRelay(filters, relays)
-
-        let subs : Sub[] = []
-        for (let [relay, filters] of filtersByRelay) {
-            let sub = this.#handleSubscription(relay, filters, onEvent, onEose)
-            if (sub) {
-                subs.push(sub)
-            }
-        }
+        let subs : Sub[] = this.#handleFiltersByRelay(filtersByRelay, onEvent, onEose)
         return () => {
             for (let sub of subs) {
                 sub.unsub()
