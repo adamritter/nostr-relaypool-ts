@@ -234,14 +234,12 @@ export class RelayPool {
         }
         return subs
     }
-    // #getCachedDeduplicatedFiltersByRelay(filters: (Filter & {relay?: string, noCache?: boolean})[],
-            // relays: string[]) : Map<string, Filter[]> {
-        // }
-    subscribe(filters:(Filter&{relay?:string, noCache?: boolean})[], relays:string[],
+    #getCachedDeduplicatedFiltersByRelay(filters: (Filter & {relay?: string, noCache?: boolean})[],
+            relays: string[],
             onEvent: (event: Event & {id: string}, afterEose: boolean, url:string|undefined)=>void,
-            onEose?: (eventsByThisSub: (Event&{id: string})[]|undefined, url:string)=>void,
-            options: {allowDuplicateEvents?: boolean, allowOlderEvents?: boolean} = {})
-            : () => void {
+            options: {allowDuplicateEvents?: boolean, allowOlderEvents?: boolean} = {}) :
+                [(event: Event & {id: string}, afterEose: boolean, url:string|undefined)=>void,
+                 Map<string, Filter[]>] {
         let cachedEventsWithUpdatedFilters = this.getCachedEventsWithUpdatedFilters(filters, relays)
         if (!options.allowDuplicateEvents) {
             onEvent = doNotEmitDuplicateEvents(onEvent)
@@ -256,7 +254,16 @@ export class RelayPool {
         filters = mergeSimilarAndRemoveEmptyFilters(filters)
         relays = unique(relays)
         let filtersByRelay = this.#getFiltersByRelay(filters, relays)
-        let subs : Sub[] = this.#handleFiltersByRelay(filtersByRelay, onEvent, onEose)
+        return [onEvent, filtersByRelay]
+    }
+
+    subscribe(filters:(Filter&{relay?:string, noCache?: boolean})[], relays:string[],
+            onEvent: (event: Event & {id: string}, afterEose: boolean, url:string|undefined)=>void,
+            onEose?: (eventsByThisSub: (Event&{id: string})[]|undefined, url:string)=>void,
+            options: {allowDuplicateEvents?: boolean, allowOlderEvents?: boolean} = {})
+            : () => void {
+       let [dedupedOnEvent, filtersByRelay] = this.#getCachedDeduplicatedFiltersByRelay(filters, relays, onEvent, options)
+        let subs : Sub[] = this.#handleFiltersByRelay(filtersByRelay, dedupedOnEvent, onEose)
         return () => {
             for (let sub of subs) {
                 sub.unsub()
