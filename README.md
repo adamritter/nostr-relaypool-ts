@@ -46,6 +46,7 @@ let unsub=relayPool.subscribe([
     ], 
     relays,
     (event, isAfterEose, relayURL) => { console.log(event, isAfterEose, relayURL) },
+    undefined,
     (events, relayURL) => { console.log(events, relayURL); }
     )
     
