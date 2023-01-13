@@ -119,7 +119,7 @@ export class RelayPool {
         let events = new Set<(Event & {id: string})>()
         for (let author of filter.authors) {
             let contactEvent
-            if (filter.kinds.find(kind => kind === Kind.Contacts) !== undefined) {
+            if (filter.kinds.includes(Kind.Contacts)) {
                 contactEvent = this.cache?.contactsByPubKey.get(author)
                 if (!contactEvent) {
                     authors.push(author)
@@ -127,8 +127,8 @@ export class RelayPool {
                 }
             }
             let metadataEvent
-            if (filter.kinds.find(kind => kind === Kind.Metadata) !== undefined) {
-                let metadataEvent = this.cache?.metadataByPubKey.get(author)
+            if (filter.kinds.includes(Kind.Metadata)) {
+                metadataEvent = this.cache?.metadataByPubKey.get(author)
                 if (!metadataEvent) {
                     authors.push(author)
                     continue

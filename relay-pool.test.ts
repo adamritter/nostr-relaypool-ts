@@ -468,5 +468,22 @@ test('kind0', async () => {
     })
   })
 
-  return expect(secondOnEvent).resolves.toEqual(true)
+  await expect(secondOnEvent).resolves.toEqual(true)
+
+  let thirdOnEvent = new Promise(resolve => {
+    relaypool.subscribe([
+      {
+        kinds: [0],
+        authors: [pk]
+      }
+    ], [],
+    event => {
+      expect(event).toHaveProperty('pubkey', pk)
+      expect(event).toHaveProperty('kind', 0)
+      expect(event).toHaveProperty('content', 'nostr-tools test suite')
+      resolve(true)
+    })
+  })
+
+  return expect(thirdOnEvent).resolves.toEqual(true)
 })

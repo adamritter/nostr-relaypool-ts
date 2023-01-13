@@ -1,12 +1,13 @@
 {
   "name": "nostr-relaypool",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "A Nostr RelayPool implementation in TypeScript using only nostr-tools library as a dependency.",
+  "type": "module",
   "repository": {
     "type": "git",
     "url": "https://github.com/adamritter/nostr-relaypool-ts.git"
   },
-  "main": "lib/nostr-relaypool.cjs.js",
+  "main": "lib/nostr-relaypool.cjs",
   "module": "lib/nostr-relaypool.esm.js",
   "dependencies": {
     "nostr-tools": "^1.1.0",
@@ -30,23 +31,25 @@
     "@scure/bip39": "^1.1.0",
     "@types/jest": "^29.2.5",
     "@types/node": "^18.0.3",
+    "@types/ws": "^8.5.4",
     "@typescript-eslint/eslint-plugin": "^5.46.1",
     "@typescript-eslint/parser": "^5.46.1",
     "esbuild": "0.16.9",
     "esbuild-plugin-alias": "^0.2.1",
     "eslint": "^8.30.0",
     "eslint-plugin-babel": "^5.3.1",
-    "esm-loader-typescript": "^1.0.1",
+    "esm-loader-import-relative-extension": "^1.0.8",
+    "esm-loader-typescript": "^1.0.3",
     "events": "^3.3.0",
     "jest": "^29.3.1",
+    "node-esm-loader": "^0.0.3",
     "node-fetch": "2",
     "ts-jest": "^29.0.3",
     "ts-node": "^10.9.1",
     "tsd": "^0.22.0",
     "typescript": "^4.9.4",
     "websocket-polyfill": "^0.0.3",
-    "ws": "^8.12.0",
-    "@types/ws": "^8.5.4"
+    "ws": "^8.12.0"
   },
   "scripts": {
     "build": "node build.js",

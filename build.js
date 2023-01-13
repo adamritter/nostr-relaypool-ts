@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const esbuild = require('esbuild')
+import { build } from 'esbuild'
 
 let common = {
   entryPoints: ['index.ts'],
@@ -8,8 +8,7 @@ let common = {
   sourcemap: 'external'
 }
 
-esbuild
-  .build({
+build({
     ...common,
     outfile: 'lib/nostr-relaypool.esm.js',
     format: 'esm',
@@ -17,21 +16,19 @@ esbuild
   })
   .then(() => console.log('esm build success.'))
 
-esbuild
-  .build({
+build({
     ...common,
-    outfile: 'lib/nostr-relaypool.cjs.js',
+    outfile: 'lib/nostr-relaypool.cjs',
     format: 'cjs',
     packages: 'external'
   })
   .then(() => console.log('cjs build success.'))
 
-esbuild
-  .build({
+build({
     ...common,
     outfile: 'lib/nostr-relaypool.bundle.js',
     format: 'iife',
-    globalName: 'NostrTools',
+    globalName: 'NostrRelayPool',
     define: {
       window: 'self',
       global: 'self',
