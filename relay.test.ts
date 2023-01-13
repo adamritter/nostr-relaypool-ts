@@ -21,6 +21,10 @@ afterEach(async () => {
   await relay.close()
 })
 
+afterAll(async () => {
+  await _relayServer.close()
+})
+
 test('connectivity', () => {
   return expect(
     new Promise(resolve => {

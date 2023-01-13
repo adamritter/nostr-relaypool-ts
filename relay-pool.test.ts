@@ -27,6 +27,11 @@ afterEach(async () => {
     await relaypool.close()
 })
 
+afterAll(async () => {
+  await _relayServer.close()
+  await _relayServer2.close()
+})
+
 async function publishAndGetEvent(relays : string[]) : Promise<Event & {id: string}> {
   let sk = generatePrivateKey()
   let pk = getPublicKey(sk)
