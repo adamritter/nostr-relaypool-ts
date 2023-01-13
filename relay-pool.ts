@@ -1,4 +1,4 @@
-import { Event, Filter, Kind, Sub } from 'nostr-tools'
+import { Event, Filter, Kind, matchFilter, Sub } from 'nostr-tools'
 import { mergeSimilarAndRemoveEmptyFilters } from './merge-similar-filters'
 import {type Relay, relayInit} from './relay'
 
@@ -16,7 +16,9 @@ type Cache = {
     contactsByPubKey: Map<string, Event & {id: string}>
 }
 
-function doNotEmitDuplicateEvents(onEvent: (event: Event & {id: string}, afterEose: boolean, url:string|undefined)=>void) :
+type OnEvent = (event: Event & {id: string}, afterEose: boolean, url:string|undefined)=>void
+
+function doNotEmitDuplicateEvents(onEvent: OnEvent) :
         ((event: Event & {id: string}, afterEose: boolean, url:string|undefined)=>void) {
     let event_ids = new Set()
     return (event: Event & {id: string}, afterEose: boolean, url:string|undefined) => {
@@ -26,7 +28,7 @@ function doNotEmitDuplicateEvents(onEvent: (event: Event & {id: string}, afterEo
     }
 }
 
-function doNotEmitOlderEvents(onEvent: (event: Event & {id: string}, afterEose: boolean, url:string|undefined)=>void) :
+function doNotEmitOlderEvents(onEvent: OnEvent) :
         ((event: Event & {id: string}, afterEose: boolean, url:string|undefined)=>void) {
     let created_at_by_events_kinds = new Map()
     return (event: Event & {id: string}, afterEose: boolean, url:string|undefined) => {
@@ -38,10 +40,22 @@ function doNotEmitOlderEvents(onEvent: (event: Event & {id: string}, afterEose: 
         onEvent(event, afterEose, url)
     }
 }
+
+function matchOnEventFilters(onEvent: OnEvent, filters: Filter[]) : OnEvent {
+    return (event: Event & {id: string}, afterEose: boolean, url:string|undefined) => {
+        for (let filter of filters) {
+            if (matchFilter(filter, event)) {
+                onEvent(event, afterEose, url)
+                break
+            }
+        }
+    }
+}
 export class RelayPool {
     relayByUrl: Map<string, Relay>
     noticecbs: Array<(msg: string)=>void>
     cache?: Cache
+    minMaxDelayms?: number
     constructor(relays?: string[], options : {noCache?: boolean} = {}) {
         if (!options.noCache) {
             this.cache = {
@@ -252,23 +266,74 @@ export class RelayPool {
         }
         filters = cachedEventsWithUpdatedFilters.filters
         filters = mergeSimilarAndRemoveEmptyFilters(filters)
+        onEvent = matchOnEventFilters(onEvent, filters)
         relays = unique(relays)
         let filtersByRelay = this.#getFiltersByRelay(filters, relays)
         return [onEvent, filtersByRelay]
     }
+    filtersToSubscribe: [(event: Event & {id: string}, afterEose: boolean, url:string|undefined)=>void,
+                        Map<string, Filter[]>][] = []
+    timer? : ReturnType<typeof setTimeout>
 
-    subscribe(filters:(Filter&{relay?:string, noCache?: boolean})[], relays:string[],
-            onEvent: (event: Event & {id: string}, afterEose: boolean, url:string|undefined)=>void,
-            onEose?: (eventsByThisSub: (Event&{id: string})[]|undefined, url:string)=>void,
-            options: {allowDuplicateEvents?: boolean, allowOlderEvents?: boolean} = {})
-            : () => void {
-       let [dedupedOnEvent, filtersByRelay] = this.#getCachedDeduplicatedFiltersByRelay(filters, relays, onEvent, options)
-        let subs : Sub[] = this.#handleFiltersByRelay(filtersByRelay, dedupedOnEvent, onEose)
+    sendSubscriptions(onEose?: (eventsByThisSub: (Event&{id: string})[]|undefined, url:string)=>void) {
+        let filtersByRelay = new Map<string, Filter[]>()
+        let onEvents: ((event: Event & {id: string}, afterEose: boolean, url:string|undefined)=>void)[] = []
+        for (let [onEvent, filtersByRelayBySub] of this.filtersToSubscribe) {
+            for (let [relay, filters] of filtersByRelayBySub) {
+                let filtersByRelayFilters = filtersByRelay.get(relay)
+                if (filtersByRelayFilters) {
+                    filtersByRelay.set(relay, filtersByRelayFilters.concat(filters))
+                } else {
+                    filtersByRelay.set(relay, filters)
+                }
+            }
+            onEvents.push(onEvent)
+        }
+        this.filtersToSubscribe = []
+        this.timer = undefined
+        let subs : Sub[] = this.#handleFiltersByRelay(filtersByRelay, (event, afterEose, url) => {
+            for (let onEvent of onEvents) {
+                onEvent(event, afterEose, url)
+            }
+        }, onEose)
         return () => {
             for (let sub of subs) {
                 sub.unsub()
             }
         }
+    }
+    subscribe(filters:(Filter&{relay?:string, noCache?: boolean})[], relays:string[],
+            onEvent: (event: Event & {id: string}, afterEose: boolean, url:string|undefined)=>void,
+            maxDelayms?: number,
+            onEose?: (eventsByThisSub: (Event&{id: string})[]|undefined, url:string)=>void,
+            options: {allowDuplicateEvents?: boolean, allowOlderEvents?: boolean} = {})
+            : () => void {
+        if (maxDelayms && onEose) {
+            throw new Error('maxDelayms and onEose cannot be used together')
+        }
+       let [dedupedOnEvent, filtersByRelay] = this.#getCachedDeduplicatedFiltersByRelay(filters, relays, onEvent, options)
+       this.filtersToSubscribe.push([dedupedOnEvent, filtersByRelay])
+       if (maxDelayms) {
+            if ((this.minMaxDelayms || Infinity) > maxDelayms) {
+                this.minMaxDelayms = maxDelayms
+            }
+            if (this.timer) {
+                clearTimeout(this.timer)
+            }
+            if (this.minMaxDelayms && this.minMaxDelayms !== Infinity) {
+                this.timer = setTimeout(() => { this.sendSubscriptions() }, this.minMaxDelayms)
+            }
+            return () => {}
+        }
+        return this.sendSubscriptions(onEose)
+    }
+    async getEventById(id: string, relays: string[], maxDelayms?: number) : Promise<Event&{id: string}> {
+        return new Promise((resolve, reject) => {
+            this.subscribe([{ids: [id]}], relays, (event, afterEose) => {
+                resolve(event)
+            },
+            maxDelayms)
+        })
     }
 
     publish(event: Event, relays: string[]) {

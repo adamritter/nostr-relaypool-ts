@@ -14,13 +14,13 @@ Features (all features are turned on by default, but can be turned off if needed
   - Duplicate events from cache / different relays are emitted only once
   - If an event with kind 0 / 3 is emitted, older events with the same author and kind are not emitted. The last
     emitted event with that kind and author is always the freshest.
-
-Next prioritized feature for 0.4 release:
-
-The next big usability impovement coming soon will be delayed subscriptions,
-that allows clients to request data from different components, and let the RelayPool implementation
-merge, deduplicate, prioritize, cache these requests and split the replies to send to each subscription
-from the clients.
+  - A big usability impovement implemented (but not yet tested) are delayed subscriptions,
+      that allows clients to request data from different components, and let the RelayPool implementation
+      merge, deduplicate, prioritize, cache these requests and split the replies to send to each subscription
+      from the clients. It needs lots of testing and optimizations to get it to production level, but prototyping is important
+      at this stage.
+  - async getEventById can be used to get one event (which can be cached). It works together well with delayed subscriptions,
+       as it's not good to send a subscription for just 1 event.
 
 Installation:
 
@@ -80,6 +80,7 @@ options:
                       relays: string[],
                       onevent: (event: Event & {id: string}, isAfterEose: boolean,
                           relayURL: string | undefined) => void,
+                      maxDelayms?: number,
                       oneose?: (events, relayURL) => void,
                       options: {allowDuplicateEvents?: boolean, allowOlderEvents?: boolean} = {}
               ) : () => void
@@ -124,6 +125,12 @@ new data is required from those relays.
 
   isAfterEose is true if the event was recieved from a relay after the EOSE message.
   isAfterEose is always false for cached events.
+
+- maxDelayms: Adding maxDelay option delays sending subscription requests, batching them and matching them after the events come back.
+
+It's called maxDelay instead of delay, as subscribing with a maxDelay of 100ms and later subscribing with infinity time will reset the timer to 100ms delay.
+
+The first implementation uses matchFilter (O(n^2)) for redistributing events that can be easily optimized if the abstraction is successful.
 
 - oneose: called for each EOSE event received from a relay with the events
        that were received from the particular server.

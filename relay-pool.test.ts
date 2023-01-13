@@ -38,6 +38,7 @@ test('querying', () => {
     expect(url).toBe(relayurls[0])
     resolve1(true)
   },
+  undefined,
   (events, url) => {
     expect(events).toHaveLength(1)
     if (events && events.length > 0) {
@@ -120,6 +121,7 @@ test('relay option in filter', () => {
     expect(url).toBe(relayurls[0])
     resolve1(true)
   },
+  undefined,
   (events, url) => {
     expect(events).toHaveLength(1)
     if (events && events.length > 0) {
@@ -264,7 +266,7 @@ test('remove duplicates', async () => {
       if (counter === 2) {
         resolve(true)
       }
-    }, undefined, {allowDuplicateEvents: true})
+    }, undefined, undefined, {allowDuplicateEvents: true})
     relaypool.publish(event, relayurls)
     relaypool.publish(event, relayurls2)
   })).resolves.toEqual(true)
