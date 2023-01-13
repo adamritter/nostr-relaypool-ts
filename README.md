@@ -78,10 +78,10 @@ options:
 ```typescript
  RelayPool::subscribe(filters: Filter & {relay?: string, noCache?: boolean},
                       relays: string[],
-                      onevent: (event: Event & {id: string}, isAfterEose: boolean,
+                      onEvent: (event: Event & {id: string}, isAfterEose: boolean,
                           relayURL: string | undefined) => void,
                       maxDelayms?: number,
-                      oneose?: (events, relayURL) => void,
+                      onEose?: (events, relayURL) => void,
                       options: {allowDuplicateEvents?: boolean, allowOlderEvents?: boolean} = {}
               ) : () => void
 ```
@@ -113,7 +113,7 @@ new data is required from those relays.
 - relays: Events for filters that have no relay field set will be requested from
       all the specified relays.
 
-- onevent: 
+- onEvent: 
   
   Other RelayPool implementations allow calling onevent multiple times
       on a Subscription class, which was the original design in this library as well, but
@@ -132,8 +132,10 @@ It's called maxDelay instead of delay, as subscribing with a maxDelay of 100ms a
 
 The first implementation uses matchFilter (O(n^2)) for redistributing events that can be easily optimized if the abstraction is successful.
 
-- oneose: called for each EOSE event received from a relay with the events
-       that were received from the particular server.
+If it's used, the returned function doesn't do anything. It can't be used together with onEose.
+
+- onEose: called for each EOSE event received from a relay with the events
+       that were received from the particular server. Can't be used together with maxDelayms
 
 - options:
 
@@ -143,6 +145,16 @@ The first implementation uses matchFilter (O(n^2)) for redistributing events tha
   - allowOlderEvents: if a subscription emitted an event with kind 0 or 3 (metadata / contacts),
     it doesn't allow emitting older events by default. This option overrides that filter.
 
+
+```typescript
+ RelayPool::sendSubscriptions(onEose?: (events, relayURL) => void) : () => void
+```
+Sends subscriptions queued up with delayed subscriptions. It can be used after all subscriptions are requested (with some delay or Infinite delay).
+
+```typescript
+  async getEventById(id: string, relays: string[], maxDelayms: number) : Promise<Event&{id: string}> {
+```
+Gets one event by event id. Many similar subscriptions should be batched together. It is useful inside a component when many components are rendered.
 
 Other API functions:
 ```typescript
