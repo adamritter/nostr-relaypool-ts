@@ -119,7 +119,7 @@ export class RelayPool {
         let events = new Set<(Event & {id: string})>()
         for (let author of filter.authors) {
             let contactEvent
-            if (filter.kinds.find(kind => kind === Kind.Contacts)) {
+            if (filter.kinds.find(kind => kind === Kind.Contacts) !== undefined) {
                 contactEvent = this.cache?.contactsByPubKey.get(author)
                 if (!contactEvent) {
                     authors.push(author)
@@ -127,7 +127,7 @@ export class RelayPool {
                 }
             }
             let metadataEvent
-            if (filter.kinds.find(kind => kind === Kind.Metadata)) {
+            if (filter.kinds.find(kind => kind === Kind.Metadata) !== undefined) {
                 let metadataEvent = this.cache?.metadataByPubKey.get(author)
                 if (!metadataEvent) {
                     authors.push(author)
@@ -158,7 +158,7 @@ export class RelayPool {
                 // @ts-ignore
                 new_data = this.#getCachedEventsByIdWithUpdatedFilter(filter)
             } else if (!filter.noCache && filter.authors && filter.kinds &&
-                    !filter.kinds.find(kind => kind !== Kind.Contacts && kind !== Kind.Metadata)) {
+                    filter.kinds.find(kind => kind !== Kind.Contacts && kind !== Kind.Metadata) === undefined) {
                 // @ts-ignore
                 new_data = this.#getCachedEventsByPubKeyWithUpdatedFilter(filter)
             }

@@ -369,3 +369,104 @@ test('cache authors', async () => {
     relaypool.publish(event, relayurls2)
   })).resolves.toEqual(true)
 })
+
+test('kind3', async () => {
+  let sk = generatePrivateKey()
+  let pk = getPublicKey(sk)
+
+  let event = {
+    kind: 3,
+    pubkey: pk,
+    created_at: Math.floor(Date.now() / 1000),
+    tags: [],
+    content: 'nostr-tools test suite'
+  }
+  // @ts-ignore
+  event.id = getEventHash(event)
+  // @ts-ignore
+  event.sig = await signEvent(event, sk)
+  relaypool.publish(event, relayurls)
+
+  await expect(new Promise(resolve => {
+    relaypool.subscribe([
+      {
+        kinds: [3],
+        authors: [pk]
+      }
+    ], relayurls,
+    event => {
+      expect(event).toHaveProperty('pubkey', pk)
+      expect(event).toHaveProperty('kind', 3)
+      expect(event).toHaveProperty('content', 'nostr-tools test suite')
+      resolve(true)
+    })
+  })).resolves.toEqual(true)
+
+  let secondOnEvent = new Promise(resolve => {
+    relaypool.subscribe([
+      {
+        // @ts-ignore
+        ids: [event.id]
+      }
+    ], [],
+    event => {
+      expect(event).toHaveProperty('pubkey', pk)
+      expect(event).toHaveProperty('kind', 3)
+      expect(event).toHaveProperty('content', 'nostr-tools test suite')
+      resolve(true)
+    })
+  })
+
+  return expect(secondOnEvent).resolves.toEqual(true)
+})
+
+
+test('kind0', async () => {
+  let sk = generatePrivateKey()
+  let pk = getPublicKey(sk)
+
+  let event = {
+    kind: 0,
+    pubkey: pk,
+    created_at: Math.floor(Date.now() / 1000),
+    tags: [],
+    content: 'nostr-tools test suite'
+  }
+  // @ts-ignore
+  event.id = getEventHash(event)
+  // @ts-ignore
+  event.sig = await signEvent(event, sk)
+  relaypool.publish(event, relayurls)
+
+  await expect(new Promise(resolve => {
+    relaypool.subscribe([
+      {
+        kinds: [0],
+        authors: [pk]
+      }
+    ], relayurls,
+    event => {
+      expect(event).toHaveProperty('pubkey', pk)
+      expect(event).toHaveProperty('kind', 0)
+      expect(event).toHaveProperty('content', 'nostr-tools test suite')
+      resolve(true)
+    })
+  })).resolves.toEqual(true)
+
+  let secondOnEvent = new Promise(resolve => {
+    relaypool.subscribe([
+      {
+        // @ts-ignore
+        ids: [event.id]
+      }
+    ], [],
+    event => {
+      expect(event).toHaveProperty('pubkey', pk)
+      expect(event).toHaveProperty('kind', 0)
+      expect(event).toHaveProperty('content', 'nostr-tools test suite')
+      resolve(true)
+    })
+  })
+
+  return expect(secondOnEvent).resolves.toEqual(true)
+})
