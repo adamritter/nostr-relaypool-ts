@@ -250,10 +250,9 @@ export class RelayPool {
     }
     #getCachedDeduplicatedFiltersByRelay(filters: (Filter & {relay?: string, noCache?: boolean})[],
             relays: string[],
-            onEvent: (event: Event & {id: string}, afterEose: boolean, url:string|undefined)=>void,
+            onEvent: OnEvent,
             options: {allowDuplicateEvents?: boolean, allowOlderEvents?: boolean} = {}) :
-                [(event: Event & {id: string}, afterEose: boolean, url:string|undefined)=>void,
-                 Map<string, Filter[]>] {
+                [OnEvent, Map<string, Filter[]>] {
         let cachedEventsWithUpdatedFilters = this.getCachedEventsWithUpdatedFilters(filters, relays)
         if (!options.allowDuplicateEvents) {
             onEvent = doNotEmitDuplicateEvents(onEvent)
@@ -327,9 +326,9 @@ export class RelayPool {
         }
         return this.sendSubscriptions(onEose)
     }
-    async getEventById(id: string, relays: string[], maxDelayms?: number) : Promise<Event&{id: string}> {
+    async getEventById(id: string, relays: string[], maxDelayms: number) : Promise<Event&{id: string}> {
         return new Promise((resolve, reject) => {
-            this.subscribe([{ids: [id]}], relays, (event, afterEose) => {
+            this.subscribe([{ids: [id]}], relays, event => {
                 resolve(event)
             },
             maxDelayms)

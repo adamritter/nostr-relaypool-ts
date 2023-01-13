@@ -5,7 +5,6 @@ const config = {
   silent: false,
   preset: 'ts-jest',
   testEnvironment: 'node',
-  esModuleInterop: true,
 }
 
 module.exports = config

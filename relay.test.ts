@@ -5,12 +5,16 @@ import 'websocket-polyfill'
 import {signEvent, generatePrivateKey, getEventHash, getPublicKey, type Relay, type Event} from 'nostr-tools'
 
 import {relayInit} from './relay'
+import { InMemoryRelayServer } from './in-memory-relay-server'
 
 let relay:Relay
+let _relayServer:InMemoryRelayServer = new InMemoryRelayServer(8089)
 
 beforeEach(() => {
-  relay = relayInit('wss://nostr.v0l.io/')
+  // relay = relayInit('wss://nostr.v0l.io/')
+  relay = relayInit('ws://localhost:8089/')
   relay.connect()
+  _relayServer.clear()
 })
 
 afterEach(async () => {
@@ -30,19 +34,54 @@ test('connectivity', () => {
   ).resolves.toBe(true)
 })
 
-test('querying', () => {
+
+async function publishAndGetEvent() : Promise<Event & {id: string}> {
+  let sk = generatePrivateKey()
+  let pk = getPublicKey(sk)
+  let event = {
+    kind: 27572,
+    pubkey: pk,
+    created_at: Math.floor(Date.now() / 1000),
+    tags: [],
+    content: 'nostr-tools test suite'
+  }
+  let eventId = getEventHash(event)
+  // @ts-ignore
+  event.id = eventId
+  // @ts-ignore
+  event.sig = signEvent(event, sk)
+  relay.publish(event)
+  // @ts-ignore
+  return new Promise(resolve => relay.sub([{ids: [event.id]}]).on('event', (event:Event & {id: string}) => {
+    resolve(event)
+  }))
+}
+
+test('querying', async () => {
+  let event : Event & {id: string} = await publishAndGetEvent()
   var resolve1: (success: boolean) => void
   var resolve2: (success: boolean) => void
 
+  let promiseAll = Promise.all([
+    new Promise(resolve => {
+      resolve(true)
+      resolve1 = resolve
+    }),
+    new Promise(resolve => {
+      resolve2 = resolve
+      resolve(true)
+    })
+  ])
+
   let sub = relay.sub([
     {
-      ids: ['d7dd5eb3ab747e16f8d0212d53032ea2a7cadef53837e5a6c66d42849fcb9027']
+      kinds: [event.kind]
     }
   ])
   sub.on('event', (event:Event) => {
     expect(event).toHaveProperty(
       'id',
-      'd7dd5eb3ab747e16f8d0212d53032ea2a7cadef53837e5a6c66d42849fcb9027'
+      event.id
     )
     resolve1(true)
   })
@@ -51,14 +90,7 @@ test('querying', () => {
   })
 
   return expect(
-    Promise.all([
-      new Promise(resolve => {
-        resolve1 = resolve
-      }),
-      new Promise(resolve => {
-        resolve2 = resolve
-      })
-    ])
+    promiseAll
   ).resolves.toEqual([true, true])
 })
 

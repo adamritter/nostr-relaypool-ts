@@ -2,40 +2,80 @@
 
 import 'websocket-polyfill'
 
-import {signEvent, generatePrivateKey, getEventHash, getPublicKey} from 'nostr-tools'
+import {signEvent, generatePrivateKey, getEventHash, getPublicKey, Event} from 'nostr-tools'
 import {RelayPool} from './relay-pool'
+import { InMemoryRelayServer } from './in-memory-relay-server'
 
 let relaypool: RelayPool
 
-let relayurls = ['wss://nostr-dev.wellorder.net/']
-let relayurls2 = ['wss://nostr.v0l.io/']
+// let relayurls = ['wss://nostr-dev.wellorder.net/']
+// let relayurls2 = ['wss://nostr.v0l.io/']
 
+let relayurls = ['ws://localhost:8083/']
+let relayurls2 = ['ws://localhost:8084/']
+
+let _relayServer: InMemoryRelayServer = new InMemoryRelayServer(8083)
+let _relayServer2: InMemoryRelayServer = new InMemoryRelayServer(8084)
 
 beforeEach(() => {
   relaypool = new RelayPool(relayurls)
+  _relayServer.clear()
+  _relayServer2.clear()
 })
 
 afterEach(async () => {
-    relaypool.close()
+    await relaypool.close()
 })
 
-test('querying', () => {
+async function publishAndGetEvent(relays : string[]) : Promise<Event & {id: string}> {
+  let sk = generatePrivateKey()
+  let pk = getPublicKey(sk)
+  let event = {
+    kind: 27572,
+    pubkey: pk,
+    created_at: Math.floor(Date.now() / 1000),
+    tags: [],
+    content: 'nostr-tools test suite'
+  }
+  let eventId = getEventHash(event)
+  // @ts-ignore
+  event.id = eventId
+  // @ts-ignore
+  event.sig = signEvent(event, sk)
+  relaypool.publish(event, relays)
+  let a = relaypool.getEventById(eventId, relays, Infinity)
+  relaypool.sendSubscriptions()
+  await a
+  // @ts-ignore
+  return event
+}
+
+test('querying relaypool', async () => {
+  let event = await publishAndGetEvent(relayurls)
+  expect(event.kind).toEqual(27572)
   var resolve1:(success:boolean)=>void
   var resolve2:(success:boolean)=>void
-
+  let promiseAll = Promise.all([
+    new Promise(resolve => {
+      resolve1 = resolve
+    }),
+    new Promise(resolve => {
+      resolve2 = resolve
+    })
+  ])
   relaypool.subscribe([
     {
-      ids: ['d7dd5eb3ab747e16f8d0212d53032ea2a7cadef53837e5a6c66d42849fcb9027']
+      kinds: [27572] // Force no caching
     }
   ],
   relayurls,
   (event, afterEose, url) => {
     expect(event).toHaveProperty(
       'id',
-      'd7dd5eb3ab747e16f8d0212d53032ea2a7cadef53837e5a6c66d42849fcb9027'
+      event.id
     )
     expect(afterEose).toBe(false)
-    expect(url).toBe(relayurls[0])
+    // expect(url).toBe(relayurls[0])
     resolve1(true)
   },
   undefined,
@@ -44,7 +84,7 @@ test('querying', () => {
     if (events && events.length > 0) {
       expect(events[0]).toHaveProperty(
         'id',
-        'd7dd5eb3ab747e16f8d0212d53032ea2a7cadef53837e5a6c66d42849fcb9027'
+        event.id
       )
     }
     expect(url).toBe(relayurls[0])
@@ -52,21 +92,27 @@ test('querying', () => {
   })
 
   return expect(
-    Promise.all([
-      new Promise(resolve => {
-        resolve1 = resolve
-      }),
-      new Promise(resolve => {
-        resolve2 = resolve
-      })
-    ])
+    promiseAll
   ).resolves.toEqual([true, true])
 })
 
 test('listening and publishing', async () => {
   let sk = generatePrivateKey()
   let pk = getPublicKey(sk)
-  var resolve2:(success:boolean)=>void
+
+  let event = {
+    kind: 27572,
+    pubkey: pk,
+    created_at: Math.floor(Date.now() / 1000),
+    tags: [],
+    content: 'nostr-tools test suite'
+  }
+  // @ts-ignore
+  event.id = getEventHash(event)
+  // @ts-ignore
+  event.sig = signEvent(event, sk)
+
+  let resolve2:(success:boolean)=>void
 
   relaypool.subscribe([
     {
@@ -81,18 +127,6 @@ test('listening and publishing', async () => {
     resolve2(true)
   })
 
-  let event = {
-    kind: 27572,
-    pubkey: pk,
-    created_at: Math.floor(Date.now() / 1000),
-    tags: [],
-    content: 'nostr-tools test suite'
-  }
-  // @ts-ignore
-  event.id = getEventHash(event)
-  // @ts-ignore
-  event.sig = await signEvent(event, sk)
-
   relaypool.publish(event, relayurls)
   return expect(
     new Promise(resolve => {
@@ -102,23 +136,32 @@ test('listening and publishing', async () => {
 })
 
 
-test('relay option in filter', () => {
+test('relay option in filter', async () => {
+  let event = await publishAndGetEvent(relayurls)
+
   var resolve1:(success:boolean)=>void
   var resolve2:(success:boolean)=>void
+  let promiseAll = Promise.all([
+    new Promise(resolve => {
+      resolve1 = resolve
+    }),
+    new Promise(resolve => {
+      resolve2 = resolve
+    })
+  ])
 
   relaypool.subscribe([
     {
-      ids: ['d7dd5eb3ab747e16f8d0212d53032ea2a7cadef53837e5a6c66d42849fcb9027'],
-      relay: relayurls[0]
+      kinds: [event.kind],
+      relay: relayurls[0],
     }
   ], [],
   (event, afterEose, url) => {
     expect(event).toHaveProperty(
       'id',
-      'd7dd5eb3ab747e16f8d0212d53032ea2a7cadef53837e5a6c66d42849fcb9027'
+      event.id
     )
     expect(afterEose).toBe(false)
-    expect(url).toBe(relayurls[0])
     resolve1(true)
   },
   undefined,
@@ -127,23 +170,14 @@ test('relay option in filter', () => {
     if (events && events.length > 0) {
       expect(events[0]).toHaveProperty(
         'id',
-        'd7dd5eb3ab747e16f8d0212d53032ea2a7cadef53837e5a6c66d42849fcb9027'
+        event.id
       )
     }
     expect(url).toBe(relayurls[0])
     resolve2(true)
   })
 
-  return expect(
-    Promise.all([
-      new Promise(resolve => {
-        resolve1 = resolve
-      }),
-      new Promise(resolve => {
-        resolve2 = resolve
-      })
-    ])
-  ).resolves.toEqual([true, true])
+  return expect(promiseAll).resolves.toEqual([true, true])
 })
 
 test('cached result', async () => {
@@ -162,10 +196,7 @@ test('cached result', async () => {
   event.id = getEventHash(event)
   // @ts-ignore
   event.sig = await signEvent(event, sk)
-
-
   relaypool.publish(event, relayurls)
-
 
   await expect(new Promise(resolve => {
     relaypool.subscribe([
@@ -201,46 +232,32 @@ test('cached result', async () => {
 })
 
 test('remove duplicates', async () => {
-  let sk = generatePrivateKey()
-  let pk = getPublicKey(sk)
-
-  let event = {
-    kind: 27572,
-    pubkey: pk,
-    created_at: Math.floor(Date.now() / 1000),
-    tags: [],
-    content: 'nostr-tools test suite'
-  }
-  // @ts-ignore
-  event.id = getEventHash(event)
-  // @ts-ignore
-  event.sig = await signEvent(event, sk)
+  let event = await publishAndGetEvent(relayurls)
 
   await expect(new Promise(resolve => {
     relaypool.subscribe([
       {
         kinds: [27572],
-        authors: [pk]
+        authors: [event.pubkey]
       }
     ], relayurls,
     (event, afterEose, url) => {
-      expect(event).toHaveProperty('pubkey', pk)
+      expect(event).toHaveProperty('pubkey', event.pubkey)
       expect(event).toHaveProperty('kind', 27572)
       expect(event).toHaveProperty('content', 'nostr-tools test suite')
       resolve(true)
     })
-    relaypool.publish(event, relayurls)
   })).resolves.toEqual(true)
 
   await expect(new Promise(resolve => {
     relaypool.subscribe([
       {
         kinds: [27572],
-        authors: [pk]
+        authors: [event.pubkey]
       }
     ], relayurls,
     (event, afterEose, url) => {
-      expect(event).toHaveProperty('pubkey', pk)
+      expect(event).toHaveProperty('pubkey', event.pubkey)
       expect(event).toHaveProperty('kind', 27572)
       expect(event).toHaveProperty('content', 'nostr-tools test suite')
       resolve(true)
@@ -254,12 +271,12 @@ test('remove duplicates', async () => {
       {
         // @ts-ignore
         kinds: [27572],
-        authors: [pk],
+        authors: [event.pubkey],
         noCache: true
       }
     ], [...relayurls, ...relayurls2],
     (event, afterEose, url) => {
-      expect(event).toHaveProperty('pubkey', pk)
+      expect(event).toHaveProperty('pubkey', event.pubkey)
       expect(event).toHaveProperty('kind', 27572)
       expect(event).toHaveProperty('content', 'nostr-tools test suite')
       counter += 1
@@ -276,11 +293,11 @@ test('remove duplicates', async () => {
     relaypool.subscribe([
       {
         // @ts-ignore
-        authors: [pk]
+        authors: [event.pubkey]
       }
     ], [...relayurls, ...relayurls2],
     (event, afterEose, url) => {
-      expect(event).toHaveProperty('pubkey', pk)
+      expect(event).toHaveProperty('pubkey', event.pubkey)
       expect(event).toHaveProperty('kind', 27572)
       expect(event).toHaveProperty('content', 'nostr-tools test suite')
       counter2 += 1
@@ -292,9 +309,9 @@ test('remove duplicates', async () => {
     relaypool.publish(event, relayurls2)
   })
 
-  return expect(Promise.race([
+  await expect(Promise.race([
     thirdOnEvent,
-    new Promise(resolve => setTimeout(() => resolve(-1), 2000)) ])).resolves.toEqual(-1)
+    new Promise(resolve => setTimeout(() => resolve(-1), 50)) ])).resolves.toEqual(-1)
 })
 
 

@@ -72,6 +72,7 @@ export function relayInit(url: string): Relay {
           return
         }
         connected = true
+        // TODO: Send ephereal messages after subscription, permament before
         for (let subid in openSubs) {
             trySend(['REQ', subid, ...openSubs[subid].filters])
         }
