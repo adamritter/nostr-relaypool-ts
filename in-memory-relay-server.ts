@@ -7,8 +7,8 @@ export class InMemoryRelayServer {
   events: (Event & {id: string})[] = []
   wss: WebSocketServer
   subs: Map<string, Filter[]> = new Map()
-  constructor(port = 8081) {
-    this.wss = new WebSocketServer({ port })
+  constructor(port = 8081, host = 'localhost') {
+    this.wss = new WebSocketServer({ port, host })
     this.wss.on('connection', (ws) => {
       // console.log('connected')
       ws.on('message', (message) => {
