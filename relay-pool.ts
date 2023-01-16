@@ -22,13 +22,12 @@ type OnEvent = (
   url: string | undefined
 ) => void;
 
-function doNotEmitDuplicateEvents(
-  onEvent: OnEvent
-): (
-  event: Event & {id: string},
-  afterEose: boolean,
-  url: string | undefined
-) => void {
+type OnEose = (
+  eventsByThisSub: (Event & {id: string})[] | undefined,
+  url: string
+) => void;
+
+function doNotEmitDuplicateEvents(onEvent: OnEvent): OnEvent {
   let event_ids = new Set();
   return (
     event: Event & {id: string},
@@ -41,13 +40,7 @@ function doNotEmitDuplicateEvents(
   };
 }
 
-function doNotEmitOlderEvents(
-  onEvent: OnEvent
-): (
-  event: Event & {id: string},
-  afterEose: boolean,
-  url: string | undefined
-) => void {
+function doNotEmitOlderEvents(onEvent: OnEvent): OnEvent {
   let created_at_by_events_kinds = new Map();
   return (
     event: Event & {id: string},
@@ -264,15 +257,8 @@ export class RelayPool {
   #handleSubscription(
     relay: string,
     filters: Filter[],
-    onEvent: (
-      event: Event & {id: string},
-      afterEose: boolean,
-      url: string | undefined
-    ) => void,
-    onEose?: (
-      eventsByThisSub: (Event & {id: string})[] | undefined,
-      url: string
-    ) => void
+    onEvent: OnEvent,
+    onEose?: OnEose
   ): Sub | undefined {
     let mergedAndRemovedEmptyFilters =
       mergeSimilarAndRemoveEmptyFilters(filters);
@@ -298,15 +284,8 @@ export class RelayPool {
 
   #handleFiltersByRelay(
     filtersByRelay: Map<string, Filter[]>,
-    onEvent: (
-      event: Event & {id: string},
-      afterEose: boolean,
-      url: string | undefined
-    ) => void,
-    onEose?: (
-      eventsByThisSub: (Event & {id: string})[] | undefined,
-      url: string
-    ) => void
+    onEvent: OnEvent,
+    onEose?: OnEose
   ): Sub[] {
     let subs = [];
     for (let [relay, filters] of filtersByRelay) {
@@ -343,28 +322,12 @@ export class RelayPool {
     let filtersByRelay = this.#getFiltersByRelay(filters, relays);
     return [onEvent, filtersByRelay];
   }
-  filtersToSubscribe: [
-    (
-      event: Event & {id: string},
-      afterEose: boolean,
-      url: string | undefined
-    ) => void,
-    Map<string, Filter[]>
-  ][] = [];
+  filtersToSubscribe: [OnEvent, Map<string, Filter[]>][] = [];
   timer?: ReturnType<typeof setTimeout>;
 
-  sendSubscriptions(
-    onEose?: (
-      eventsByThisSub: (Event & {id: string})[] | undefined,
-      url: string
-    ) => void
-  ) {
+  sendSubscriptions(onEose?: OnEose) {
     let filtersByRelay = new Map<string, Filter[]>();
-    let onEvents: ((
-      event: Event & {id: string},
-      afterEose: boolean,
-      url: string | undefined
-    ) => void)[] = [];
+    let onEvents: OnEvent[] = [];
     for (let [onEvent, filtersByRelayBySub] of this.filtersToSubscribe) {
       for (let [relay, filters] of filtersByRelayBySub) {
         let filtersByRelayFilters = filtersByRelay.get(relay);
@@ -411,16 +374,9 @@ export class RelayPool {
   subscribe(
     filters: (Filter & {relay?: string; noCache?: boolean})[],
     relays: string[],
-    onEvent: (
-      event: Event & {id: string},
-      afterEose: boolean,
-      url: string | undefined
-    ) => void,
+    onEvent: OnEvent,
     maxDelayms?: number,
-    onEose?: (
-      eventsByThisSub: (Event & {id: string})[] | undefined,
-      url: string
-    ) => void,
+    onEose?: OnEose,
     options: {allowDuplicateEvents?: boolean; allowOlderEvents?: boolean} = {}
   ): () => void {
     if (maxDelayms && onEose) {
@@ -440,6 +396,7 @@ export class RelayPool {
     }
     return this.sendSubscriptions(onEose);
   }
+
   async getEventById(
     id: string,
     relays: string[],
