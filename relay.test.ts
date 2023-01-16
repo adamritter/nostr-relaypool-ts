@@ -61,10 +61,10 @@ async function publishAndGetEvent(): Promise<Event & {id: string}> {
   // @ts-ignore
   event.sig = signEvent(event, sk)
   relay.publish(event)
-  // @ts-ignore
   return new Promise(resolve =>
     relay
-      .sub([{ids: [event.id]}])
+  // @ts-ignore
+  .sub([{ids: [event.id]}])
       .on('event', (event: Event & {id: string}) => {
         resolve(event)
       })
