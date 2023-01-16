@@ -1,4 +1,4 @@
-import {Event, Filter, Kind, Sub} from "nostr-tools";
+import {Event, Filter, Sub} from "nostr-tools";
 import {mergeSimilarAndRemoveEmptyFilters} from "./merge-similar-filters";
 import {type Relay, relayInit} from "./relay";
 import {
@@ -7,6 +7,7 @@ import {
   matchOnEventFilters,
   type OnEvent,
 } from "./on-event-filters";
+import {EventCache} from "./event-cache";
 
 let unique = (arr: string[]) => [...new Set(arr)];
 
@@ -16,12 +17,6 @@ function withoutRelay(filter: Filter & {relay?: string}): Filter {
   return filter;
 }
 
-type Cache = {
-  eventsById: Map<string, Event & {id: string}>;
-  metadataByPubKey: Map<string, Event & {id: string}>;
-  contactsByPubKey: Map<string, Event & {id: string}>;
-};
-
 type OnEose = (
   eventsByThisSub: (Event & {id: string})[] | undefined,
   url: string
@@ -30,15 +25,11 @@ type OnEose = (
 export class RelayPool {
   relayByUrl: Map<string, Relay>;
   noticecbs: Array<(msg: string) => void>;
-  cache?: Cache;
+  eventCache?: EventCache;
   minMaxDelayms?: number;
   constructor(relays?: string[], options: {noCache?: boolean} = {}) {
     if (!options.noCache) {
-      this.cache = {
-        eventsById: new Map(),
-        metadataByPubKey: new Map(),
-        contactsByPubKey: new Map(),
-      };
+      this.eventCache = new EventCache();
     }
     this.relayByUrl = new Map();
     this.noticecbs = [];
@@ -77,95 +68,6 @@ export class RelayPool {
     return Promise.all(promises);
   }
 
-  #getCachedEventsByIdWithUpdatedFilter(
-    filter: Filter & {relay?: string; noCache?: boolean; ids: string[]}
-  ): {filter: Filter & {relay?: string}; events: Set<Event & {id: string}>} {
-    let events = new Set<Event & {id: string}>();
-    let ids: string[] = [];
-    for (let id of filter.ids) {
-      let event = this.cache?.eventsById.get(id);
-      if (event) {
-        events.add(event);
-      } else {
-        ids.push(id);
-      }
-    }
-    return {filter: {...filter, ids}, events};
-  }
-
-  #getCachedEventsByPubKeyWithUpdatedFilter(
-    filter: Filter & {
-      relay?: string;
-      noCache?: boolean;
-      authors: string[];
-      kinds: Kind[];
-    }
-  ): {filter: Filter & {relay?: string}; events: Set<Event & {id: string}>} {
-    let authors: string[] = [];
-    let events = new Set<Event & {id: string}>();
-    for (let author of filter.authors) {
-      let contactEvent;
-      if (filter.kinds.includes(Kind.Contacts)) {
-        contactEvent = this.cache?.contactsByPubKey.get(author);
-        if (!contactEvent) {
-          authors.push(author);
-          continue;
-        }
-      }
-      let metadataEvent;
-      if (filter.kinds.includes(Kind.Metadata)) {
-        metadataEvent = this.cache?.metadataByPubKey.get(author);
-        if (!metadataEvent) {
-          authors.push(author);
-          continue;
-        }
-      }
-      if (contactEvent) {
-        events.add(contactEvent);
-      }
-      if (metadataEvent) {
-        events.add(metadataEvent);
-      }
-    }
-    return {filter: {...filter, authors}, events};
-  }
-
-  getCachedEventsWithUpdatedFilters(
-    filters: (Filter & {relay?: string; noCache?: boolean})[],
-    relays: string[]
-  ): {
-    filters: (Filter & {relay?: string})[];
-    events: (Event & {id: string})[];
-  } {
-    if (!this.cache) {
-      return {filters, events: []};
-    }
-    let events: Set<Event & {id: string}> = new Set();
-    let new_filters: (Filter & {relay?: string})[] = [];
-    for (let filter of filters) {
-      let new_data = {filter, events: []};
-      if (filter.ids) {
-        // @ts-ignore
-        new_data = this.#getCachedEventsByIdWithUpdatedFilter(filter);
-      } else if (
-        !filter.noCache &&
-        filter.authors &&
-        filter.kinds &&
-        filter.kinds.find(
-          (kind) => kind !== Kind.Contacts && kind !== Kind.Metadata
-        ) === undefined
-      ) {
-        // @ts-ignore
-        new_data = this.#getCachedEventsByPubKeyWithUpdatedFilter(filter);
-      }
-      for (let event of new_data.events) {
-        events.add(event);
-      }
-      new_filters.push(new_data.filter);
-    }
-    return {filters: new_filters, events: [...events]};
-  }
-
   #getFiltersByRelay(
     filters: (Filter & {relay?: string})[],
     relays: string[]
@@ -198,18 +100,6 @@ export class RelayPool {
     return filtersByRelay;
   }
 
-  #addEventToCache(event: Event & {id: string}) {
-    if (this.cache) {
-      this.cache.eventsById.set(event.id, event);
-      if (event.kind === Kind.Metadata) {
-        this.cache.metadataByPubKey.set(event.pubkey, event);
-      }
-      if (event.kind === Kind.Contacts) {
-        this.cache.contactsByPubKey.set(event.pubkey, event);
-      }
-    }
-  }
-
   #handleSubscription(
     relay: string,
     filters: Filter[],
@@ -225,7 +115,7 @@ export class RelayPool {
     let sub = instance.sub(mergedAndRemovedEmptyFilters);
     let eventsBySub: (Event & {id: string})[] | undefined = [];
     sub.on("event", (event: Event & {id: string}) => {
-      this.#addEventToCache(event);
+      this.eventCache?.addEvent(event);
       eventsBySub?.push(event);
       onEvent(event, eventsBySub === undefined, relay);
     });
@@ -258,20 +148,22 @@ export class RelayPool {
     onEvent: OnEvent,
     options: {allowDuplicateEvents?: boolean; allowOlderEvents?: boolean} = {}
   ): [OnEvent, Map<string, Filter[]>] {
-    let cachedEventsWithUpdatedFilters = this.getCachedEventsWithUpdatedFilters(
-      filters,
-      relays
-    );
+    let events: (Event & {id: string})[] = [];
+    if (this.eventCache) {
+      let cachedEventsWithUpdatedFilters =
+        this.eventCache.getCachedEventsWithUpdatedFilters(filters, relays);
+      filters = cachedEventsWithUpdatedFilters.filters;
+      events = cachedEventsWithUpdatedFilters.events;
+    }
     if (!options.allowDuplicateEvents) {
       onEvent = doNotEmitDuplicateEvents(onEvent);
     }
     if (!options.allowOlderEvents) {
       onEvent = doNotEmitOlderEvents(onEvent);
     }
-    for (let event of cachedEventsWithUpdatedFilters.events) {
+    for (let event of events) {
       onEvent(event, false, undefined);
     }
-    filters = cachedEventsWithUpdatedFilters.filters;
     filters = mergeSimilarAndRemoveEmptyFilters(filters);
     onEvent = matchOnEventFilters(onEvent, filters);
     relays = unique(relays);
