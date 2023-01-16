@@ -1,3 +1,4 @@
+/* global WebSocket */
 // Currently it's just a copy of the Relay code from-nostr tools with a modification
 // to allow sub/unsub and publishing before connection is established.
 // It needs heavy refactoring and more unit tests to get into a maintainable state.
@@ -37,7 +38,7 @@ export function relayInit(url: string): Relay {
   var ws: WebSocket
   var resolveClose: () => void
   let connected = false
-  let sendOnConnect:string[] = []
+  let sendOnConnect: string[] = []
   var openSubs: {[id: string]: {filters: Filter[]} & SubscriptionOptions} = {}
   var listeners: {
     connect: Array<() => void>
@@ -76,7 +77,7 @@ export function relayInit(url: string): Relay {
         connected = true
         // TODO: Send ephereal messages after subscription, permament before
         for (let subid in openSubs) {
-            trySend(['REQ', subid, ...openSubs[subid].filters])
+          trySend(['REQ', subid, ...openSubs[subid].filters])
         }
         for (let msg of sendOnConnect) {
           ws.send(msg)
@@ -177,7 +178,7 @@ export function relayInit(url: string): Relay {
       skipVerification
     }
     if (connected) {
-        trySend(['REQ', subid, ...filters])
+      trySend(['REQ', subid, ...filters])
     }
 
     return {
@@ -211,19 +212,13 @@ export function relayInit(url: string): Relay {
   return {
     url,
     sub,
-    on: (
-      type: RelayEvent,
-      cb: any
-    ): void => {
+    on: (type: RelayEvent, cb: any): void => {
       listeners[type].push(cb)
       if (type === 'connect' && ws?.readyState === 1) {
         cb()
       }
     },
-    off: (
-      type: RelayEvent,
-      cb: any
-    ): void => {
+    off: (type: RelayEvent, cb: any): void => {
       let index = listeners[type].indexOf(cb)
       if (index !== -1) listeners[type].splice(index, 1)
     },

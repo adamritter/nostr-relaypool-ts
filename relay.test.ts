@@ -2,13 +2,20 @@
 
 import 'websocket-polyfill'
 
-import {signEvent, generatePrivateKey, getEventHash, getPublicKey, type Relay, type Event} from 'nostr-tools'
+import {
+  signEvent,
+  generatePrivateKey,
+  getEventHash,
+  getPublicKey,
+  type Relay,
+  type Event
+} from 'nostr-tools'
 
 import {relayInit} from './relay'
-import { InMemoryRelayServer } from './in-memory-relay-server'
+import {InMemoryRelayServer} from './in-memory-relay-server'
 
-let relay:Relay
-let _relayServer:InMemoryRelayServer = new InMemoryRelayServer(8089)
+let relay: Relay
+let _relayServer: InMemoryRelayServer = new InMemoryRelayServer(8089)
 
 beforeEach(() => {
   // relay = relayInit('wss://nostr.v0l.io/')
@@ -38,8 +45,7 @@ test('connectivity', () => {
   ).resolves.toBe(true)
 })
 
-
-async function publishAndGetEvent() : Promise<Event & {id: string}> {
+async function publishAndGetEvent(): Promise<Event & {id: string}> {
   let sk = generatePrivateKey()
   let pk = getPublicKey(sk)
   let event = {
@@ -56,13 +62,17 @@ async function publishAndGetEvent() : Promise<Event & {id: string}> {
   event.sig = signEvent(event, sk)
   relay.publish(event)
   // @ts-ignore
-  return new Promise(resolve => relay.sub([{ids: [event.id]}]).on('event', (event:Event & {id: string}) => {
-    resolve(event)
-  }))
+  return new Promise(resolve =>
+    relay
+      .sub([{ids: [event.id]}])
+      .on('event', (event: Event & {id: string}) => {
+        resolve(event)
+      })
+  )
 }
 
 test('querying', async () => {
-  let event : Event & {id: string} = await publishAndGetEvent()
+  let event: Event & {id: string} = await publishAndGetEvent()
   var resolve1: (success: boolean) => void
   var resolve2: (success: boolean) => void
 
@@ -82,20 +92,15 @@ test('querying', async () => {
       kinds: [event.kind]
     }
   ])
-  sub.on('event', (event:Event) => {
-    expect(event).toHaveProperty(
-      'id',
-      event.id
-    )
+  sub.on('event', (event: Event) => {
+    expect(event).toHaveProperty('id', event.id)
     resolve1(true)
   })
   sub.on('eose', () => {
     resolve2(true)
   })
 
-  return expect(
-    promiseAll
-  ).resolves.toEqual([true, true])
+  return expect(promiseAll).resolves.toEqual([true, true])
 })
 
 test('listening (twice) and publishing', async () => {
@@ -111,13 +116,13 @@ test('listening (twice) and publishing', async () => {
     }
   ])
 
-  sub.on('event', (event:Event) => {
+  sub.on('event', (event: Event) => {
     expect(event).toHaveProperty('pubkey', pk)
     expect(event).toHaveProperty('kind', 27572)
     expect(event).toHaveProperty('content', 'nostr-tools test suite')
     resolve1(true)
   })
-  sub.on('event', (event:Event) => {
+  sub.on('event', (event: Event) => {
     expect(event).toHaveProperty('pubkey', pk)
     expect(event).toHaveProperty('kind', 27572)
     expect(event).toHaveProperty('content', 'nostr-tools test suite')
@@ -149,7 +154,6 @@ test('listening (twice) and publishing', async () => {
   ).resolves.toEqual([true, true])
 })
 
-
 test('two subscriptions', async () => {
   let sk = generatePrivateKey()
   let pk = getPublicKey(sk)
@@ -166,39 +170,41 @@ test('two subscriptions', async () => {
   // @ts-ignore
   event.sig = await signEvent(event, sk)
 
-  await expect(new Promise(resolve => {
-    let sub = relay.sub([
-      {
-        kinds: [27572],
-        authors: [pk]
-      }
-    ])
+  await expect(
+    new Promise(resolve => {
+      let sub = relay.sub([
+        {
+          kinds: [27572],
+          authors: [pk]
+        }
+      ])
 
-    sub.on('event', (event:Event) => {
-      expect(event).toHaveProperty('pubkey', pk)
-      expect(event).toHaveProperty('kind', 27572)
-      expect(event).toHaveProperty('content', 'nostr-tools test suite')
-      resolve(true)
+      sub.on('event', (event: Event) => {
+        expect(event).toHaveProperty('pubkey', pk)
+        expect(event).toHaveProperty('kind', 27572)
+        expect(event).toHaveProperty('content', 'nostr-tools test suite')
+        resolve(true)
+      })
+      relay.publish(event)
     })
-  relay.publish(event)
-  })).resolves.toEqual(true)
+  ).resolves.toEqual(true)
 
+  await expect(
+    new Promise(resolve => {
+      let sub = relay.sub([
+        {
+          kinds: [27572],
+          authors: [pk]
+        }
+      ])
 
-  await expect(new Promise(resolve => {
-    let sub = relay.sub([
-      {
-        kinds: [27572],
-        authors: [pk]
-      }
-    ])
-
-
-    sub.on('event', (event:Event) => {
-      expect(event).toHaveProperty('pubkey', pk)
-      expect(event).toHaveProperty('kind', 27572)
-      expect(event).toHaveProperty('content', 'nostr-tools test suite')
-      resolve(true)
+      sub.on('event', (event: Event) => {
+        expect(event).toHaveProperty('pubkey', pk)
+        expect(event).toHaveProperty('kind', 27572)
+        expect(event).toHaveProperty('content', 'nostr-tools test suite')
+        resolve(true)
+      })
+      relay.publish(event)
     })
-    relay.publish(event)
-  })).resolves.toEqual(true)
+  ).resolves.toEqual(true)
 })

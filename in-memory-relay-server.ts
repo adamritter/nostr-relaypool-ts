@@ -1,5 +1,5 @@
-import { Event, Filter, matchFilters } from 'nostr-tools'
-import { WebSocket, WebSocketServer } from 'ws'
+import {Event, Filter, matchFilters} from 'nostr-tools'
+import {WebSocket, WebSocketServer} from 'ws'
 
 let _ = WebSocket // Importing WebSocket is needed for WebSocketServer to work
 
@@ -8,10 +8,10 @@ export class InMemoryRelayServer {
   wss: WebSocketServer
   subs: Map<string, Filter[]> = new Map()
   constructor(port = 8081, host = 'localhost') {
-    this.wss = new WebSocketServer({ port, host })
-    this.wss.on('connection', (ws) => {
+    this.wss = new WebSocketServer({port, host})
+    this.wss.on('connection', ws => {
       // console.log('connected')
-      ws.on('message', (message) => {
+      ws.on('message', message => {
         let data = JSON.parse(message.toString())
         // console.log('received: %s', JSON.stringify(data))
         if (data && data[0] === 'REQ') {
@@ -42,8 +42,8 @@ export class InMemoryRelayServer {
       })
     })
   }
-  async close() : Promise<void> {
-    new Promise((resolve) => this.wss.close(resolve))
+  async close(): Promise<void> {
+    new Promise(resolve => this.wss.close(resolve))
   }
   clear() {
     this.events = []
