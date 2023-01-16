@@ -301,6 +301,19 @@ export class RelayPool {
             }
         }
     }
+
+    #resetTimer(maxDelayms: number) {
+        if ((this.minMaxDelayms || Infinity) > maxDelayms) {
+            this.minMaxDelayms = maxDelayms
+        }
+        if (this.timer) {
+            clearTimeout(this.timer)
+        }
+        if (this.minMaxDelayms && this.minMaxDelayms !== Infinity) {
+            this.timer = setTimeout(() => { this.sendSubscriptions() }, this.minMaxDelayms)
+        }
+    }
+
     subscribe(filters:(Filter&{relay?:string, noCache?: boolean})[], relays:string[],
             onEvent: (event: Event & {id: string}, afterEose: boolean, url:string|undefined)=>void,
             maxDelayms?: number,
@@ -313,15 +326,7 @@ export class RelayPool {
        let [dedupedOnEvent, filtersByRelay] = this.#getCachedDeduplicatedFiltersByRelay(filters, relays, onEvent, options)
        this.filtersToSubscribe.push([dedupedOnEvent, filtersByRelay])
        if (maxDelayms) {
-            if ((this.minMaxDelayms || Infinity) > maxDelayms) {
-                this.minMaxDelayms = maxDelayms
-            }
-            if (this.timer) {
-                clearTimeout(this.timer)
-            }
-            if (this.minMaxDelayms && this.minMaxDelayms !== Infinity) {
-                this.timer = setTimeout(() => { this.sendSubscriptions() }, this.minMaxDelayms)
-            }
+            this.#resetTimer(maxDelayms)
             return () => {}
         }
         return this.sendSubscriptions(onEose)
