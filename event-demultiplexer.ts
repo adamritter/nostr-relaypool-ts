@@ -40,10 +40,12 @@ export class EventDemultiplexer {
       );
     }
     this.#addEventUsingEventKey(event, afterEose, url, `kinds:${event.kind}`);
+    this.#addEventUsingEventKey(event, afterEose, url, "");
   }
 
   subscribe(filters: Filter[], onEvent: OnEvent) {
     for (let filter of filters) {
+      let added = false;
       for (let key of ["ids", "authors", ...filterTags(filter), "kinds"]) {
         if (key in filter) {
           // @ts-ignore
@@ -56,6 +58,17 @@ export class EventDemultiplexer {
               this.filterAndOnEventByEvent.set(eventKey, [[filter, onEvent]]);
             }
           }
+          added = true;
+          break;
+        }
+      }
+      if (!added) {
+        let eventKey = "";
+        let filterAndOnEvent = this.filterAndOnEventByEvent.get(eventKey);
+        if (filterAndOnEvent) {
+          filterAndOnEvent.push([filter, onEvent]);
+        } else {
+          this.filterAndOnEventByEvent.set(eventKey, [[filter, onEvent]]);
         }
       }
     }
