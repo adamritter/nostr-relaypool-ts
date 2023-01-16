@@ -1,6 +1,12 @@
-import {Event, Filter, Kind, matchFilter, Sub} from "nostr-tools";
+import {Event, Filter, Kind, Sub} from "nostr-tools";
 import {mergeSimilarAndRemoveEmptyFilters} from "./merge-similar-filters";
 import {type Relay, relayInit} from "./relay";
+import {
+  doNotEmitDuplicateEvents,
+  doNotEmitOlderEvents,
+  matchOnEventFilters,
+  type OnEvent,
+} from "./on-event-filters";
 
 let unique = (arr: string[]) => [...new Set(arr)];
 
@@ -16,61 +22,11 @@ type Cache = {
   contactsByPubKey: Map<string, Event & {id: string}>;
 };
 
-type OnEvent = (
-  event: Event & {id: string},
-  afterEose: boolean,
-  url: string | undefined
-) => void;
-
 type OnEose = (
   eventsByThisSub: (Event & {id: string})[] | undefined,
   url: string
 ) => void;
 
-function doNotEmitDuplicateEvents(onEvent: OnEvent): OnEvent {
-  let event_ids = new Set();
-  return (
-    event: Event & {id: string},
-    afterEose: boolean,
-    url: string | undefined
-  ) => {
-    if (event_ids.has(event.id)) return;
-    event_ids.add(event.id);
-    onEvent(event, afterEose, url);
-  };
-}
-
-function doNotEmitOlderEvents(onEvent: OnEvent): OnEvent {
-  let created_at_by_events_kinds = new Map();
-  return (
-    event: Event & {id: string},
-    afterEose: boolean,
-    url: string | undefined
-  ) => {
-    if (event.kind === Kind.Metadata || event.kind === Kind.Contacts) {
-      let event_kind = event.pubkey + " " + event.kind;
-      if ((created_at_by_events_kinds.get(event_kind) || 0) > event.created_at)
-        return;
-      created_at_by_events_kinds.set(event_kind, event.created_at);
-    }
-    onEvent(event, afterEose, url);
-  };
-}
-
-function matchOnEventFilters(onEvent: OnEvent, filters: Filter[]): OnEvent {
-  return (
-    event: Event & {id: string},
-    afterEose: boolean,
-    url: string | undefined
-  ) => {
-    for (let filter of filters) {
-      if (matchFilter(filter, event)) {
-        onEvent(event, afterEose, url);
-        break;
-      }
-    }
-  };
-}
 export class RelayPool {
   relayByUrl: Map<string, Relay>;
   noticecbs: Array<(msg: string) => void>;
