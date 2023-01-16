@@ -3,7 +3,10 @@ import {mergeSimilarAndRemoveEmptyFilters} from "./merge-similar-filters";
 import {type Relay, relayInit} from "./relay";
 import {type OnEvent} from "./on-event-filters";
 import {EventCache} from "./event-cache";
-import {groupFiltersByRelay} from "./group-filters-by-relay";
+import {
+  batchFiltersByRelay,
+  groupFiltersByRelayAndEmitCacheHits,
+} from "./group-filters-by-relay";
 
 let unique = (arr: string[]) => [...new Set(arr)];
 
@@ -59,7 +62,7 @@ export class RelayPool {
     return Promise.all(promises);
   }
 
-  #handleSubscription(
+  #subscribeRelay(
     relay: string,
     filters: Filter[],
     onEvent: OnEvent,
@@ -87,14 +90,14 @@ export class RelayPool {
     return sub;
   }
 
-  #handleFiltersByRelay(
+  #subscribeRelays(
     filtersByRelay: Map<string, Filter[]>,
     onEvent: OnEvent,
     onEose?: OnEose
   ): Sub[] {
     let subs = [];
     for (let [relay, filters] of filtersByRelay) {
-      let sub = this.#handleSubscription(relay, filters, onEvent, onEose);
+      let sub = this.#subscribeRelay(relay, filters, onEvent, onEose);
       if (sub) {
         subs.push(sub);
       }
@@ -106,22 +109,17 @@ export class RelayPool {
   timer?: ReturnType<typeof setTimeout>;
 
   sendSubscriptions(onEose?: OnEose) {
-    let filtersByRelay = new Map<string, Filter[]>();
-    let onEvents: OnEvent[] = [];
-    for (let [onEvent, filtersByRelayBySub] of this.filtersToSubscribe) {
-      for (let [relay, filters] of filtersByRelayBySub) {
-        let filtersByRelayFilters = filtersByRelay.get(relay);
-        if (filtersByRelayFilters) {
-          filtersByRelay.set(relay, filtersByRelayFilters.concat(filters));
-        } else {
-          filtersByRelay.set(relay, filters);
-        }
-      }
-      onEvents.push(onEvent);
+    if (this.timer) {
+      clearTimeout(this.timer);
     }
-    this.filtersToSubscribe = [];
     this.timer = undefined;
-    let subs: Sub[] = this.#handleFiltersByRelay(
+
+    let [onEvents, filtersByRelay] = batchFiltersByRelay(
+      this.filtersToSubscribe
+    );
+    this.filtersToSubscribe = [];
+
+    let subs: Sub[] = this.#subscribeRelays(
       filtersByRelay,
       (event, afterEose, url) => {
         for (let onEvent of onEvents) {
@@ -162,7 +160,7 @@ export class RelayPool {
     if (maxDelayms && onEose) {
       throw new Error("maxDelayms and onEose cannot be used together");
     }
-    let [dedupedOnEvent, filtersByRelay] = groupFiltersByRelay(
+    let [dedupedOnEvent, filtersByRelay] = groupFiltersByRelayAndEmitCacheHits(
       filters,
       relays,
       onEvent,

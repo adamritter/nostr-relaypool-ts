@@ -10,7 +10,7 @@ import {EventCache} from "./event-cache";
 
 let unique = (arr: string[]) => [...new Set(arr)];
 
-export function groupFiltersByRelay(
+export function groupFiltersByRelayAndEmitCacheHits(
   filters: (Filter & {relay?: string; noCache?: boolean})[],
   relays: string[],
   onEvent: OnEvent,
@@ -76,4 +76,23 @@ function withoutRelay(filter: Filter & {relay?: string}): Filter {
   filter = {...filter};
   delete filter.relay;
   return filter;
+}
+
+export function batchFiltersByRelay(
+  subscribedFilters: [OnEvent, Map<string, Filter[]>][]
+): [OnEvent[], Map<string, Filter[]>] {
+  let filtersByRelay = new Map<string, Filter[]>();
+  let onEvents: OnEvent[] = [];
+  for (let [onEvent, filtersByRelayBySub] of subscribedFilters) {
+    for (let [relay, filters] of filtersByRelayBySub) {
+      let filtersByRelayFilters = filtersByRelay.get(relay);
+      if (filtersByRelayFilters) {
+        filtersByRelay.set(relay, filtersByRelayFilters.concat(filters));
+      } else {
+        filtersByRelay.set(relay, filters);
+      }
+    }
+    onEvents.push(onEvent);
+  }
+  return [onEvents, filtersByRelay];
 }
