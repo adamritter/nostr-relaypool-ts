@@ -80,7 +80,7 @@ function withoutRelay(filter: Filter & {relay?: string}): Filter {
 
 export function batchFiltersByRelay(
   subscribedFilters: [OnEvent, Map<string, Filter[]>][]
-): [OnEvent[], Map<string, Filter[]>] {
+): [OnEvent, Map<string, Filter[]>] {
   let filtersByRelay = new Map<string, Filter[]>();
   let onEvents: OnEvent[] = [];
   for (let [onEvent, filtersByRelayBySub] of subscribedFilters) {
@@ -94,5 +94,10 @@ export function batchFiltersByRelay(
     }
     onEvents.push(onEvent);
   }
-  return [onEvents, filtersByRelay];
+  let onEvent: OnEvent = (event, afterEose, url) => {
+    for (let onEvent of onEvents) {
+      onEvent(event, afterEose, url);
+    }
+  };
+  return [onEvent, filtersByRelay];
 }

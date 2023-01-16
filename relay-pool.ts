@@ -19,7 +19,7 @@ export class RelayPool {
   relayByUrl: Map<string, Relay> = new Map();
   noticecbs: Array<(msg: string) => void> = [];
   eventCache?: EventCache;
-  minMaxDelayms?: number;
+  minMaxDelayms: number = Infinity;
   filtersToSubscribe: [OnEvent, Map<string, Filter[]>][] = [];
   timer?: ReturnType<typeof setTimeout>;
 
@@ -107,25 +107,15 @@ export class RelayPool {
   }
 
   sendSubscriptions(onEose?: OnEose) {
-    if (this.timer) {
-      clearTimeout(this.timer);
-    }
+    clearTimeout(this.timer);
     this.timer = undefined;
+    this.minMaxDelayms = Infinity;
 
-    let [onEvents, filtersByRelay] = batchFiltersByRelay(
-      this.filtersToSubscribe
-    );
+    let [onEvent, filtersByRelay]: [OnEvent, Map<string, Filter[]>] =
+      batchFiltersByRelay(this.filtersToSubscribe);
     this.filtersToSubscribe = [];
 
-    let subs: Sub[] = this.#subscribeRelays(
-      filtersByRelay,
-      (event, afterEose, url) => {
-        for (let onEvent of onEvents) {
-          onEvent(event, afterEose, url);
-        }
-      },
-      onEose
-    );
+    let subs: Sub[] = this.#subscribeRelays(filtersByRelay, onEvent, onEose);
     return () => {
       for (let sub of subs) {
         sub.unsub();
@@ -134,13 +124,14 @@ export class RelayPool {
   }
 
   #resetTimer(maxDelayms: number) {
-    if ((this.minMaxDelayms || Infinity) > maxDelayms) {
+    if (this.minMaxDelayms > maxDelayms) {
       this.minMaxDelayms = maxDelayms;
     }
-    if (this.timer) {
-      clearTimeout(this.timer);
-    }
-    if (this.minMaxDelayms && this.minMaxDelayms !== Infinity) {
+
+    clearTimeout(this.timer);
+    this.timer = undefined;
+
+    if (this.minMaxDelayms !== Infinity) {
       this.timer = setTimeout(() => {
         this.sendSubscriptions();
       }, this.minMaxDelayms);
