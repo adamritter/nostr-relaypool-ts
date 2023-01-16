@@ -20,6 +20,9 @@ export class RelayPool {
   noticecbs: Array<(msg: string) => void>;
   eventCache?: EventCache;
   minMaxDelayms?: number;
+  filtersToSubscribe: [OnEvent, Map<string, Filter[]>][] = [];
+  timer?: ReturnType<typeof setTimeout>;
+
   constructor(relays?: string[], options: {noCache?: boolean} = {}) {
     if (!options.noCache) {
       this.eventCache = new EventCache();
@@ -104,9 +107,6 @@ export class RelayPool {
     }
     return subs;
   }
-
-  filtersToSubscribe: [OnEvent, Map<string, Filter[]>][] = [];
-  timer?: ReturnType<typeof setTimeout>;
 
   sendSubscriptions(onEose?: OnEose) {
     if (this.timer) {
