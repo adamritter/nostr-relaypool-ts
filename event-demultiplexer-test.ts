@@ -1,6 +1,6 @@
 /* eslint-env jest */
 
-import {Event} from "nostr-tools";
+import {Event, Filter, matchFilter} from "nostr-tools";
 import {EventDemultiplexer} from "./event-demultiplexer";
 
 describe("EventDemultiplexer", () => {
@@ -65,5 +65,60 @@ describe("EventDemultiplexer", () => {
     };
     demultiplexer.onEvent(event, true, "");
     expect(onEvent).toHaveBeenCalledWith(event, true, "");
+  });
+
+  test.skip("many filters", () => {
+    let time = new Date().getTime();
+    let counter = 0;
+    const onEvent = () => {
+      counter++;
+    };
+    for (let i = 0; i < 2000; i++) {
+      demultiplexer.subscribe([{ids: ["" + i * 3]}], onEvent);
+    }
+    const event: Event & {id: string} = {
+      id: "123",
+      kind: 1,
+      pubkey: "abc",
+      tags: [],
+      content: "",
+      created_at: 0,
+    };
+    for (let i = 0; i < 2000; i++) {
+      demultiplexer.onEvent(
+        {...event, id: "" + i * 2},
+        true,
+        "https://example.com"
+      );
+    }
+    expect(new Date().getTime() - time).toBeLessThan(5);
+    expect(counter).toBe(667);
+  });
+
+  test.skip("many filters using matchFilter", () => {
+    let time = new Date().getTime();
+    let counter = 0;
+    let filters: Filter[] = [];
+    for (let i = 0; i < 2000; i++) {
+      filters.push({ids: ["" + i * 3]});
+    }
+    const event: Event & {id: string} = {
+      id: "123",
+      kind: 1,
+      pubkey: "abc",
+      tags: [],
+      content: "",
+      created_at: 0,
+    };
+    for (let i = 0; i < 2000; i++) {
+      let e = {...event, id: "" + i * 2};
+      for (let filter of filters) {
+        if (matchFilter(filter, e)) {
+          counter++;
+        }
+      }
+    }
+    expect(new Date().getTime() - time).toBeGreaterThan(20);
+    expect(counter).toBe(667);
   });
 });
