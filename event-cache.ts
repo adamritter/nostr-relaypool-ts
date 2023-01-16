@@ -23,10 +23,20 @@ export class EventCache {
     filter: Filter & {
       relay?: string;
       noCache?: boolean;
-      authors: string[];
-      kinds: Kind[];
     }
-  ): {filter: Filter & {relay?: string}; events: Set<Event & {id: string}>} {
+  ):
+    | {filter: Filter & {relay?: string}; events: Set<Event & {id: string}>}
+    | undefined {
+    if (
+      filter.noCache ||
+      !filter.authors ||
+      !filter.kinds ||
+      filter.kinds.find(
+        (kind) => kind !== Kind.Contacts && kind !== Kind.Metadata
+      ) !== undefined
+    ) {
+      return undefined;
+    }
     let authors: string[] = [];
     let events = new Set<Event & {id: string}>();
     for (let author of filter.authors) {
@@ -57,8 +67,14 @@ export class EventCache {
   }
 
   #getCachedEventsByIdWithUpdatedFilter(
-    filter: Filter & {relay?: string; noCache?: boolean; ids: string[]}
-  ): {filter: Filter & {relay?: string}; events: Set<Event & {id: string}>} {
+    filter: Filter & {relay?: string; noCache?: boolean}
+  ):
+    | {filter: Filter & {relay?: string}; events: Set<Event & {id: string}>}
+    | undefined {
+    if (!filter.ids) {
+      return undefined;
+    }
+
     let events = new Set<Event & {id: string}>();
     let ids: string[] = [];
     for (let id of filter.ids) {
@@ -82,21 +98,11 @@ export class EventCache {
     let events: Set<Event & {id: string}> = new Set();
     let new_filters: (Filter & {relay?: string})[] = [];
     for (let filter of filters) {
-      let new_data = {filter, events: []};
-      if (filter.ids) {
-        // @ts-ignore
-        new_data = this.#getCachedEventsByIdWithUpdatedFilter(filter);
-      } else if (
-        !filter.noCache &&
-        filter.authors &&
-        filter.kinds &&
-        filter.kinds.find(
-          (kind) => kind !== Kind.Contacts && kind !== Kind.Metadata
-        ) === undefined
-      ) {
-        // @ts-ignore
-        new_data = this.#getCachedEventsByPubKeyWithUpdatedFilter(filter);
-      }
+      let new_data = this.#getCachedEventsByIdWithUpdatedFilter(filter) ||
+        this.#getCachedEventsByPubKeyWithUpdatedFilter(filter) || {
+          filter,
+          events: [],
+        };
       for (let event of new_data.events) {
         events.add(event);
       }
