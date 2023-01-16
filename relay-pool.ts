@@ -1,21 +1,11 @@
 import {Event, Filter, Sub} from "nostr-tools";
 import {mergeSimilarAndRemoveEmptyFilters} from "./merge-similar-filters";
 import {type Relay, relayInit} from "./relay";
-import {
-  doNotEmitDuplicateEvents,
-  doNotEmitOlderEvents,
-  matchOnEventFilters,
-  type OnEvent,
-} from "./on-event-filters";
+import {type OnEvent} from "./on-event-filters";
 import {EventCache} from "./event-cache";
+import {groupFiltersByRelay} from "./group-filters-by-relay";
 
 let unique = (arr: string[]) => [...new Set(arr)];
-
-function withoutRelay(filter: Filter & {relay?: string}): Filter {
-  filter = {...filter};
-  delete filter.relay;
-  return filter;
-}
 
 type OnEose = (
   eventsByThisSub: (Event & {id: string})[] | undefined,
@@ -69,38 +59,6 @@ export class RelayPool {
     return Promise.all(promises);
   }
 
-  #getFiltersByRelay(
-    filters: (Filter & {relay?: string})[],
-    relays: string[]
-  ): Map<string, Filter[]> {
-    let filtersByRelay = new Map<string, Filter[]>();
-    let filtersWithoutRelay: Filter[] = [];
-    for (let filter of filters) {
-      let relay = filter.relay;
-      if (relay) {
-        let relayFilters = filtersByRelay.get(relay);
-        if (relayFilters) {
-          relayFilters.push(withoutRelay(filter));
-        } else {
-          filtersByRelay.set(relay, [withoutRelay(filter)]);
-        }
-      } else {
-        filtersWithoutRelay.push(filter);
-      }
-    }
-    if (filtersWithoutRelay.length > 0) {
-      for (let relay of relays) {
-        let filters = filtersByRelay.get(relay);
-        if (filters) {
-          filtersByRelay.set(relay, filters.concat(filtersWithoutRelay));
-        } else {
-          filtersByRelay.set(relay, filtersWithoutRelay);
-        }
-      }
-    }
-    return filtersByRelay;
-  }
-
   #handleSubscription(
     relay: string,
     filters: Filter[],
@@ -142,35 +100,6 @@ export class RelayPool {
       }
     }
     return subs;
-  }
-
-  #getCachedDeduplicatedFiltersByRelay(
-    filters: (Filter & {relay?: string; noCache?: boolean})[],
-    relays: string[],
-    onEvent: OnEvent,
-    options: {allowDuplicateEvents?: boolean; allowOlderEvents?: boolean} = {}
-  ): [OnEvent, Map<string, Filter[]>] {
-    let events: (Event & {id: string})[] = [];
-    if (this.eventCache) {
-      let cachedEventsWithUpdatedFilters =
-        this.eventCache.getCachedEventsWithUpdatedFilters(filters, relays);
-      filters = cachedEventsWithUpdatedFilters.filters;
-      events = cachedEventsWithUpdatedFilters.events;
-    }
-    if (!options.allowDuplicateEvents) {
-      onEvent = doNotEmitDuplicateEvents(onEvent);
-    }
-    if (!options.allowOlderEvents) {
-      onEvent = doNotEmitOlderEvents(onEvent);
-    }
-    for (let event of events) {
-      onEvent(event, false, undefined);
-    }
-    filters = mergeSimilarAndRemoveEmptyFilters(filters);
-    onEvent = matchOnEventFilters(onEvent, filters);
-    relays = unique(relays);
-    let filtersByRelay = this.#getFiltersByRelay(filters, relays);
-    return [onEvent, filtersByRelay];
   }
 
   filtersToSubscribe: [OnEvent, Map<string, Filter[]>][] = [];
@@ -233,13 +162,13 @@ export class RelayPool {
     if (maxDelayms && onEose) {
       throw new Error("maxDelayms and onEose cannot be used together");
     }
-    let [dedupedOnEvent, filtersByRelay] =
-      this.#getCachedDeduplicatedFiltersByRelay(
-        filters,
-        relays,
-        onEvent,
-        options
-      );
+    let [dedupedOnEvent, filtersByRelay] = groupFiltersByRelay(
+      filters,
+      relays,
+      onEvent,
+      options,
+      this.eventCache
+    );
     this.filtersToSubscribe.push([dedupedOnEvent, filtersByRelay]);
     if (maxDelayms) {
       this.#resetTimer(maxDelayms);
