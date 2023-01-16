@@ -95,15 +95,15 @@ export class RelayPool {
     filtersByRelay: Map<string, Filter[]>,
     onEvent: OnEvent,
     onEose?: OnEose
-  ): Sub[] {
-    let subs = [];
+  ): () => void {
+    let subs: Sub[] = [];
     for (let [relay, filters] of filtersByRelay) {
       let sub = this.#subscribeRelay(relay, filters, onEvent, onEose);
       if (sub) {
         subs.push(sub);
       }
     }
-    return subs;
+    return () => subs.forEach((sub) => sub.unsub());
   }
 
   sendSubscriptions(onEose?: OnEose) {
@@ -115,12 +115,7 @@ export class RelayPool {
       batchFiltersByRelay(this.filtersToSubscribe);
     this.filtersToSubscribe = [];
 
-    let subs: Sub[] = this.#subscribeRelays(filtersByRelay, onEvent, onEose);
-    return () => {
-      for (let sub of subs) {
-        sub.unsub();
-      }
-    };
+    return this.#subscribeRelays(filtersByRelay, onEvent, onEose);
   }
 
   #resetTimer(maxDelayms: number) {
