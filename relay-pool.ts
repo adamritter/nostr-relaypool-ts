@@ -39,6 +39,7 @@ export class RelayPool {
       }
     }
   }
+
   addOrGetRelay(relay: string): Relay {
     let relayInstance = this.relayByUrl.get(relay);
     if (relayInstance) {
@@ -142,6 +143,7 @@ export class RelayPool {
     }
     return subs;
   }
+
   #getCachedDeduplicatedFiltersByRelay(
     filters: (Filter & {relay?: string; noCache?: boolean})[],
     relays: string[],
@@ -170,6 +172,7 @@ export class RelayPool {
     let filtersByRelay = this.#getFiltersByRelay(filters, relays);
     return [onEvent, filtersByRelay];
   }
+
   filtersToSubscribe: [OnEvent, Map<string, Filter[]>][] = [];
   timer?: ReturnType<typeof setTimeout>;
 

@@ -4,6 +4,7 @@ export class EventCache {
   eventsById: Map<string, Event & {id: string}> = new Map();
   metadataByPubKey: Map<string, Event & {id: string}> = new Map();
   contactsByPubKey: Map<string, Event & {id: string}> = new Map();
+
   addEvent(event: Event & {id: string}) {
     this.eventsById.set(event.id, event);
     if (event.kind === Kind.Metadata) {
@@ -13,9 +14,11 @@ export class EventCache {
       this.contactsByPubKey.set(event.pubkey, event);
     }
   }
+
   getEventById(id: string): (Event & {id: string}) | undefined {
     return this.eventsById.get(id);
   }
+
   #getCachedEventsByPubKeyWithUpdatedFilter(
     filter: Filter & {
       relay?: string;
