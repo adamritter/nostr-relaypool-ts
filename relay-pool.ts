@@ -16,8 +16,8 @@ type OnEose = (
 ) => void;
 
 export class RelayPool {
-  relayByUrl: Map<string, Relay>;
-  noticecbs: Array<(msg: string) => void>;
+  relayByUrl: Map<string, Relay> = new Map();
+  noticecbs: Array<(msg: string) => void> = [];
   eventCache?: EventCache;
   minMaxDelayms?: number;
   filtersToSubscribe: [OnEvent, Map<string, Filter[]>][] = [];
@@ -27,8 +27,6 @@ export class RelayPool {
     if (!options.noCache) {
       this.eventCache = new EventCache();
     }
-    this.relayByUrl = new Map();
-    this.noticecbs = [];
     if (relays) {
       for (let relay of unique(relays)) {
         this.addOrGetRelay(relay);
