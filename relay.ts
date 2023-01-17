@@ -1,10 +1,10 @@
-/* global WebSocket */
 // Currently it's just a copy of the Relay code from-nostr tools with a modification
 // to allow sub/unsub and publishing before connection is established.
 // It needs heavy refactoring and more unit tests to get into a maintainable state.
 
 import {type Event, verifySignature, validateEvent} from "nostr-tools";
 import {type Filter, matchFilters} from "nostr-tools";
+import WebSocket from "isomorphic-ws";
 
 type RelayEvent = "connect" | "disconnect" | "error" | "notice";
 
@@ -100,7 +100,7 @@ export function relayInit(url: string): Relay {
       ws.onmessage = async (e) => {
         var data;
         try {
-          data = JSON.parse(e.data);
+          data = JSON.parse(e.data.toString());
         } catch (err) {
           data = e.data;
         }

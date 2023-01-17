@@ -1,7 +1,5 @@
 /* eslint-env jest */
 
-import "websocket-polyfill";
-
 import {
   signEvent,
   generatePrivateKey,

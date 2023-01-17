@@ -1,5 +1,5 @@
 import {Event, Filter, matchFilters} from "nostr-tools";
-import {WebSocket, WebSocketServer} from "ws";
+import {WebSocket, WebSocketServer} from "isomorphic-ws";
 
 let _ = WebSocket; // Importing WebSocket is needed for WebSocketServer to work
 
