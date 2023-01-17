@@ -28,7 +28,7 @@ Features (all features are turned on by default, but can be turned off if needed
 npm i nostr-relaypool
 ```
 
-# Installation on NodeJS
+# Installation for use in NodeJS
 
 
 ```bash
