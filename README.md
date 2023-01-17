@@ -28,6 +28,13 @@ Features (all features are turned on by default, but can be turned off if needed
 npm i nostr-relaypool
 ```
 
+# Installation on NodeJS
+
+
+```bash
+npm i nostr-relaypool ws
+```
+
 # Usage:
 
 ```typescript
