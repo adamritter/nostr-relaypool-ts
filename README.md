@@ -165,3 +165,10 @@ RelayPool::onnotice(cb: (msg: string)=>void)
 
 RelayPool::onerror(cb: (msg: string)=>void)
 ```
+
+
+Support:
+
+npub1dcl4zejwr8sg9h6jzl75fy4mj6g8gpdqkfczseca6lef0d5gvzxqvux5ey
+
+TG: @Adam8812
