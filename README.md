@@ -22,13 +22,13 @@ Features (all features are turned on by default, but can be turned off if needed
   - async getEventById can be used to get one event (which can be cached). It works together well with delayed subscriptions,
        as it's not good to send a subscription for just 1 event.
 
-Installation:
+# Installation:
 
 ```bash
 npm i nostr-relaypool
 ```
 
-Usage:
+# Usage:
 
 ```typescript
 import { RelayPool } from 'nostr-relaypool'
@@ -60,7 +60,7 @@ relayPool.onnotice((notice) => {
 ```
 <br/>
 
-API documentation:
+# API documentation:
 
 
 ```typescript
@@ -165,3 +165,10 @@ RelayPool::onnotice(cb: (msg: string)=>void)
 
 RelayPool::onerror(cb: (msg: string)=>void)
 ```
+
+
+# Support:
+
+npub1dcl4zejwr8sg9h6jzl75fy4mj6g8gpdqkfczseca6lef0d5gvzxqvux5ey
+
+TG: @Adam8812
