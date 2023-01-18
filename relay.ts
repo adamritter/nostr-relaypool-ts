@@ -1,5 +1,7 @@
 // allows sub/unsub and publishing before connection is established.
 // Much more refactoring is needed
+// Don't rely on Relay interface, it will change (I'll probably delete a lot of code from here, there's no need for
+// multiple listeners)
 
 import {type Event, verifySignature, validateEvent} from "nostr-tools";
 import {type Filter, matchFilters} from "nostr-tools";
