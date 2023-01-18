@@ -68,12 +68,23 @@ class RelayC {
       failed: Array<(reason: string) => void>;
     };
   } = {};
+  connected: boolean = false;
+
+  async trySend(params: [string, ...any]) {
+    let msg = JSON.stringify(params);
+
+    if (this.connected) {
+      this.ws?.send(msg);
+    } else {
+      this.sendOnConnect.push(msg);
+    }
+  }
+
   relayInit(): Relay {
     let this2 = this;
     let url = this.url;
     let ws = this.ws;
     var resolveClose: () => void;
-    let connected = false;
     let sendOnConnect = this.sendOnConnect;
     var openSubs = this.openSubs;
     var listeners = this.listeners;
@@ -90,10 +101,10 @@ class RelayC {
             resolveClose();
             return;
           }
-          connected = true;
+          this2.connected = true;
           // TODO: Send ephereal messages after subscription, permament before
           for (let subid in openSubs) {
-            trySend(["REQ", subid, ...openSubs[subid].filters]);
+            this2.trySend(["REQ", subid, ...openSubs[subid].filters]);
           }
           for (let msg of sendOnConnect) {
             ws?.send(msg);
@@ -108,7 +119,7 @@ class RelayC {
           reject();
         };
         ws.onclose = async () => {
-          connected = false;
+          this2.connected = false;
           listeners.disconnect.forEach((cb) => cb());
           resolveClose && resolveClose();
         };
@@ -169,16 +180,6 @@ class RelayC {
       await connectRelay();
     }
 
-    async function trySend(params: [string, ...any]) {
-      let msg = JSON.stringify(params);
-
-      if (connected) {
-        ws?.send(msg);
-      } else {
-        sendOnConnect.push(msg);
-      }
-    }
-
     const sub = (
       filters: Filter[],
       {
@@ -193,8 +194,8 @@ class RelayC {
         filters,
         skipVerification,
       };
-      if (connected) {
-        trySend(["REQ", subid, ...filters]);
+      if (this2.connected) {
+        this2.trySend(["REQ", subid, ...filters]);
       }
 
       return {
@@ -206,8 +207,8 @@ class RelayC {
         unsub: () => {
           delete openSubs[subid];
           delete subListeners[subid];
-          if (connected) {
-            trySend(["CLOSE", subid]);
+          if (this2.connected) {
+            this2.trySend(["CLOSE", subid]);
           }
         },
         on: (type: "event" | "eose", cb: any): void => {
@@ -245,7 +246,8 @@ class RelayC {
         var sent = false;
         var mustMonitor = false;
 
-        trySend(["EVENT", event])
+        this2
+          .trySend(["EVENT", event])
           .then(() => {
             sent = true;
             if (mustMonitor) {
@@ -295,7 +297,7 @@ class RelayC {
       },
       connect,
       close(): Promise<void> {
-        if (connected) {
+        if (this2.connected) {
           ws?.close();
         }
         return new Promise<void>((resolve) => {
