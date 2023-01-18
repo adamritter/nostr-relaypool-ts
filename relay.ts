@@ -80,6 +80,62 @@ class RelayC {
   }
   resolveClose: (() => void) | undefined = undefined;
 
+  async onclose() {
+    this.connected = false;
+    this.listeners.disconnect.forEach((cb) => cb());
+    this.resolveClose && this.resolveClose();
+  }
+
+  async onmessage(e: any) {
+    let this2 = this;
+    var data;
+    try {
+      data = JSON.parse(e.data.toString());
+    } catch (err) {
+      data = e.data;
+    }
+
+    if (data.length >= 1) {
+      switch (data[0]) {
+        case "EVENT":
+          if (data.length !== 3) return; // ignore empty or malformed EVENT
+
+          let id = data[1];
+          let event = data[2];
+          if (
+            validateEvent(event) &&
+            this2.openSubs[id] &&
+            (this2.openSubs[id].skipVerification || verifySignature(event)) &&
+            matchFilters(this2.openSubs[id].filters, event)
+          ) {
+            this2.openSubs[id];
+            (this2.subListeners[id]?.event || []).forEach((cb) => cb(event));
+          }
+          return;
+        case "EOSE": {
+          if (data.length !== 2) return; // ignore empty or malformed EOSE
+          let id = data[1];
+          (this2.subListeners[id]?.eose || []).forEach((cb) => cb());
+          return;
+        }
+        case "OK": {
+          if (data.length < 3) return; // ignore empty or malformed OK
+          let id: string = data[1];
+          let ok: boolean = data[2];
+          let reason: string = data[3] || "";
+          if (ok) this2.pubListeners[id]?.ok.forEach((cb) => cb());
+          else this2.pubListeners[id]?.failed.forEach((cb) => cb(reason));
+          return;
+        }
+        case "NOTICE":
+          if (data.length !== 2) return; // ignore empty or malformed NOTICE
+          let notice = data[1];
+          this2.listeners.notice.forEach((cb) => cb(notice));
+          return;
+      }
+    }
+  }
+
   async connectRelay(): Promise<void> {
     let this2 = this;
     return new Promise((resolve, reject) => {
@@ -108,63 +164,9 @@ class RelayC {
         this2.listeners.error.forEach((cb) => cb());
         reject();
       };
-      ws.onclose = async () => {
-        this2.connected = false;
-        this2.listeners.disconnect.forEach((cb) => cb());
-        this2.resolveClose && this2.resolveClose();
-      };
+      ws.onclose = this2.onclose.bind(this2);
 
-      ws.onmessage = async (e) => {
-        var data;
-        try {
-          data = JSON.parse(e.data.toString());
-        } catch (err) {
-          data = e.data;
-        }
-
-        if (data.length >= 1) {
-          switch (data[0]) {
-            case "EVENT":
-              if (data.length !== 3) return; // ignore empty or malformed EVENT
-
-              let id = data[1];
-              let event = data[2];
-              if (
-                validateEvent(event) &&
-                this2.openSubs[id] &&
-                (this2.openSubs[id].skipVerification ||
-                  verifySignature(event)) &&
-                matchFilters(this2.openSubs[id].filters, event)
-              ) {
-                this2.openSubs[id];
-                (this2.subListeners[id]?.event || []).forEach((cb) =>
-                  cb(event)
-                );
-              }
-              return;
-            case "EOSE": {
-              if (data.length !== 2) return; // ignore empty or malformed EOSE
-              let id = data[1];
-              (this2.subListeners[id]?.eose || []).forEach((cb) => cb());
-              return;
-            }
-            case "OK": {
-              if (data.length < 3) return; // ignore empty or malformed OK
-              let id: string = data[1];
-              let ok: boolean = data[2];
-              let reason: string = data[3] || "";
-              if (ok) this2.pubListeners[id]?.ok.forEach((cb) => cb());
-              else this2.pubListeners[id]?.failed.forEach((cb) => cb(reason));
-              return;
-            }
-            case "NOTICE":
-              if (data.length !== 2) return; // ignore empty or malformed NOTICE
-              let notice = data[1];
-              this2.listeners.notice.forEach((cb) => cb(notice));
-              return;
-          }
-        }
-      };
+      ws.onmessage = this2.onmessage.bind(this2);
     });
   }
 
