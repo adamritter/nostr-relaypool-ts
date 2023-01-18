@@ -173,9 +173,9 @@ class RelayC {
     if (this.ws?.readyState && this.ws.readyState === 1) return; // ws already open
     await this.connectRelay();
   }
-  relayInit(): Relay {
-    let this2 = this;
 
+  getSub() {
+    let this2 = this;
     const sub = (
       filters: Filter[],
       {
@@ -221,7 +221,12 @@ class RelayC {
         },
       };
     };
+    return sub;
+  }
 
+  relayInit(): Relay {
+    let this2 = this;
+    let sub = this.getSub();
     return {
       url: this2.url,
       sub,
