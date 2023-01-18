@@ -88,7 +88,7 @@ class RelayC {
 
   async onmessage(e: any) {
     const this2 = this;
-    var data;
+    let data;
     try {
       data = JSON.parse(e.data.toString());
     } catch (err) {
@@ -245,8 +245,8 @@ class RelayC {
         if (!event.id) throw new Error(`event ${event} has no id`);
         const id = event.id;
 
-        var sent = false;
-        var mustMonitor = false;
+        let sent = false;
+        let mustMonitor = false;
 
         this2
           .trySend(["EVENT", event])
