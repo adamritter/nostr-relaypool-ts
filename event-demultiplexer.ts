@@ -9,9 +9,9 @@ export class EventDemultiplexer {
     url: string | undefined,
     eventKey: string
   ) {
-    let filterAndOnEvent = this.filterAndOnEventByEvent.get(eventKey);
+    const filterAndOnEvent = this.filterAndOnEventByEvent.get(eventKey);
     if (filterAndOnEvent) {
-      for (let [filter, onEvent] of filterAndOnEvent) {
+      for (const [filter, onEvent] of filterAndOnEvent) {
         if (matchFilter(filter, event)) {
           onEvent(event, afterEose, url);
         }
@@ -31,7 +31,7 @@ export class EventDemultiplexer {
       url,
       `authors:${event.pubkey}`
     );
-    for (let tag of event.tags) {
+    for (const tag of event.tags) {
       this.#addEventUsingEventKey(
         event,
         afterEose,
@@ -44,14 +44,14 @@ export class EventDemultiplexer {
   }
 
   subscribe(filters: Filter[], onEvent: OnEvent) {
-    for (let filter of filters) {
+    for (const filter of filters) {
       let added = false;
-      for (let key of ["ids", "authors", ...filterTags(filter), "kinds"]) {
+      for (const key of ["ids", "authors", ...filterTags(filter), "kinds"]) {
         if (key in filter) {
           // @ts-ignore
-          for (let value of filter[key]) {
-            let eventKey = `${key}:${value}`;
-            let filterAndOnEvent = this.filterAndOnEventByEvent.get(eventKey);
+          for (const value of filter[key]) {
+            const eventKey = `${key}:${value}`;
+            const filterAndOnEvent = this.filterAndOnEventByEvent.get(eventKey);
             if (filterAndOnEvent) {
               filterAndOnEvent.push([filter, onEvent]);
             } else {
@@ -63,8 +63,8 @@ export class EventDemultiplexer {
         }
       }
       if (!added) {
-        let eventKey = "";
-        let filterAndOnEvent = this.filterAndOnEventByEvent.get(eventKey);
+        const eventKey = "";
+        const filterAndOnEvent = this.filterAndOnEventByEvent.get(eventKey);
         if (filterAndOnEvent) {
           filterAndOnEvent.push([filter, onEvent]);
         } else {

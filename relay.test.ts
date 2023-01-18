@@ -13,7 +13,7 @@ import {relayInit} from "./relay";
 import {InMemoryRelayServer} from "./in-memory-relay-server";
 
 let relay: Relay;
-let _relayServer: InMemoryRelayServer = new InMemoryRelayServer(8089);
+const _relayServer: InMemoryRelayServer = new InMemoryRelayServer(8089);
 
 beforeEach(() => {
   // relay = relayInit('wss://nostr.v0l.io/')
@@ -44,16 +44,16 @@ test("connectivity", () => {
 });
 
 async function publishAndGetEvent(): Promise<Event & {id: string}> {
-  let sk = generatePrivateKey();
-  let pk = getPublicKey(sk);
-  let event = {
+  const sk = generatePrivateKey();
+  const pk = getPublicKey(sk);
+  const event = {
     kind: 27572,
     pubkey: pk,
     created_at: Math.floor(Date.now() / 1000),
     tags: [],
     content: "nostr-tools test suite",
   };
-  let eventId = getEventHash(event);
+  const eventId = getEventHash(event);
   // @ts-ignore
   event.id = eventId;
   // @ts-ignore
@@ -70,11 +70,11 @@ async function publishAndGetEvent(): Promise<Event & {id: string}> {
 }
 
 test("querying", async () => {
-  let event: Event & {id: string} = await publishAndGetEvent();
+  const event: Event & {id: string} = await publishAndGetEvent();
   var resolve1: (success: boolean) => void;
   var resolve2: (success: boolean) => void;
 
-  let promiseAll = Promise.all([
+  const promiseAll = Promise.all([
     new Promise((resolve) => {
       resolve(true);
       resolve1 = resolve;
@@ -85,7 +85,7 @@ test("querying", async () => {
     }),
   ]);
 
-  let sub = relay.sub([
+  const sub = relay.sub([
     {
       kinds: [event.kind],
     },
@@ -102,12 +102,12 @@ test("querying", async () => {
 });
 
 test("listening (twice) and publishing", async () => {
-  let sk = generatePrivateKey();
-  let pk = getPublicKey(sk);
+  const sk = generatePrivateKey();
+  const pk = getPublicKey(sk);
   var resolve1: (success: boolean) => void;
   var resolve2: (success: boolean) => void;
 
-  let sub = relay.sub([
+  const sub = relay.sub([
     {
       kinds: [27572],
       authors: [pk],
@@ -127,7 +127,7 @@ test("listening (twice) and publishing", async () => {
     resolve2(true);
   });
 
-  let event = {
+  const event = {
     kind: 27572,
     pubkey: pk,
     created_at: Math.floor(Date.now() / 1000),
@@ -153,10 +153,10 @@ test("listening (twice) and publishing", async () => {
 });
 
 test("two subscriptions", async () => {
-  let sk = generatePrivateKey();
-  let pk = getPublicKey(sk);
+  const sk = generatePrivateKey();
+  const pk = getPublicKey(sk);
 
-  let event = {
+  const event = {
     kind: 27572,
     pubkey: pk,
     created_at: Math.floor(Date.now() / 1000),
@@ -170,7 +170,7 @@ test("two subscriptions", async () => {
 
   await expect(
     new Promise((resolve) => {
-      let sub = relay.sub([
+      const sub = relay.sub([
         {
           kinds: [27572],
           authors: [pk],
@@ -189,7 +189,7 @@ test("two subscriptions", async () => {
 
   await expect(
     new Promise((resolve) => {
-      let sub = relay.sub([
+      const sub = relay.sub([
         {
           kinds: [27572],
           authors: [pk],

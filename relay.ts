@@ -70,7 +70,7 @@ class RelayC {
   connected: boolean = false;
 
   async trySend(params: [string, ...any]) {
-    let msg = JSON.stringify(params);
+    const msg = JSON.stringify(params);
 
     if (this.connected) {
       this.ws?.send(msg);
@@ -87,7 +87,7 @@ class RelayC {
   }
 
   async onmessage(e: any) {
-    let this2 = this;
+    const this2 = this;
     var data;
     try {
       data = JSON.parse(e.data.toString());
@@ -100,8 +100,8 @@ class RelayC {
         case "EVENT":
           if (data.length !== 3) return; // ignore empty or malformed EVENT
 
-          let id = data[1];
-          let event = data[2];
+          const id = data[1];
+          const event = data[2];
           if (
             validateEvent(event) &&
             this2.openSubs[id] &&
@@ -114,39 +114,39 @@ class RelayC {
           return;
         case "EOSE": {
           if (data.length !== 2) return; // ignore empty or malformed EOSE
-          let id = data[1];
+          const id = data[1];
           (this2.subListeners[id]?.eose || []).forEach((cb) => cb());
           return;
         }
         case "OK": {
           if (data.length < 3) return; // ignore empty or malformed OK
-          let id: string = data[1];
-          let ok: boolean = data[2];
-          let reason: string = data[3] || "";
+          const id: string = data[1];
+          const ok: boolean = data[2];
+          const reason: string = data[3] || "";
           if (ok) this2.pubListeners[id]?.ok.forEach((cb) => cb());
           else this2.pubListeners[id]?.failed.forEach((cb) => cb(reason));
           return;
         }
         case "NOTICE":
           if (data.length !== 2) return; // ignore empty or malformed NOTICE
-          let notice = data[1];
+          const notice = data[1];
           this2.listeners.notice.forEach((cb) => cb(notice));
           return;
       }
     }
   }
   onopen(opened: () => void) {
-    let this2 = this;
+    const this2 = this;
     if (this2.resolveClose) {
       this2.resolveClose();
       return;
     }
     this2.connected = true;
     // TODO: Send ephereal messages after subscription, permament before
-    for (let subid in this2.openSubs) {
+    for (const subid in this2.openSubs) {
       this2.trySend(["REQ", subid, ...this2.openSubs[subid].filters]);
     }
-    for (let msg of this2.sendOnConnect) {
+    for (const msg of this2.sendOnConnect) {
       this.ws?.send(msg);
     }
     this2.sendOnConnect = [];
@@ -157,7 +157,7 @@ class RelayC {
 
   async connectRelay(): Promise<void> {
     return new Promise((resolve, reject) => {
-      let ws = new WebSocket(this.url);
+      const ws = new WebSocket(this.url);
       this.ws = ws;
 
       ws.onopen = this.onopen.bind(this, resolve);
@@ -176,7 +176,7 @@ class RelayC {
   }
 
   getSub() {
-    let this2 = this;
+    const this2 = this;
     const sub = (
       filters: Filter[],
       {
@@ -184,7 +184,7 @@ class RelayC {
         id = Math.random().toString().slice(2),
       }: SubscriptionOptions = {}
     ): Sub => {
-      let subid = id;
+      const subid = id;
 
       this2.openSubs[subid] = {
         id: subid,
@@ -216,8 +216,8 @@ class RelayC {
           this2.subListeners[subid][type].push(cb);
         },
         off: (type: "event" | "eose", cb: any): void => {
-          let listeners = this2.subListeners[subid];
-          let idx = listeners[type].indexOf(cb);
+          const listeners = this2.subListeners[subid];
+          const idx = listeners[type].indexOf(cb);
           if (idx >= 0) listeners[type].splice(idx, 1);
         },
       };
@@ -226,8 +226,8 @@ class RelayC {
   }
 
   relayInit(): Relay {
-    let this2 = this;
-    let sub = this.getSub();
+    const this2 = this;
+    const sub = this.getSub();
     return {
       url: this2.url,
       sub,
@@ -238,12 +238,12 @@ class RelayC {
         }
       },
       off: (type: RelayEvent, cb: any): void => {
-        let index = this2.listeners[type].indexOf(cb);
+        const index = this2.listeners[type].indexOf(cb);
         if (index !== -1) this2.listeners[type].splice(index, 1);
       },
       publish(event: Event): Pub {
         if (!event.id) throw new Error(`event ${event} has no id`);
-        let id = event.id;
+        const id = event.id;
 
         var sent = false;
         var mustMonitor = false;
@@ -260,10 +260,10 @@ class RelayC {
           .catch(() => {});
 
         const startMonitoring = () => {
-          let monitor = sub([{ids: [id]}], {
+          const monitor = sub([{ids: [id]}], {
             id: `monitor-${id.slice(0, 5)}`,
           });
-          let willUnsub = setTimeout(() => {
+          const willUnsub = setTimeout(() => {
             (this2.pubListeners[id]?.failed || []).forEach((cb) =>
               cb("event not seen after 5 seconds")
             );
@@ -290,9 +290,9 @@ class RelayC {
             }
           },
           off: (type: "ok" | "seen" | "failed", cb: any) => {
-            let listeners = this2.pubListeners[id];
+            const listeners = this2.pubListeners[id];
             if (!listeners) return;
-            let idx = listeners[type].indexOf(cb);
+            const idx = listeners[type].indexOf(cb);
             if (idx >= 0) listeners[type].splice(idx, 1);
           },
         };

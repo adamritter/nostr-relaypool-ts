@@ -8,7 +8,7 @@ import {
 } from "./on-event-filters";
 import {EventCache} from "./event-cache";
 
-let unique = (arr: string[]) => [...new Set(arr)];
+const unique = (arr: string[]) => [...new Set(arr)];
 
 export function groupFiltersByRelayAndEmitCacheHits(
   filters: (Filter & {relay?: string; noCache?: boolean})[],
@@ -19,7 +19,7 @@ export function groupFiltersByRelayAndEmitCacheHits(
 ): [OnEvent, Map<string, Filter[]>] {
   let events: (Event & {id: string})[] = [];
   if (eventCache) {
-    let cachedEventsWithUpdatedFilters =
+    const cachedEventsWithUpdatedFilters =
       eventCache.getCachedEventsWithUpdatedFilters(filters, relays);
     filters = cachedEventsWithUpdatedFilters.filters;
     events = cachedEventsWithUpdatedFilters.events;
@@ -30,13 +30,13 @@ export function groupFiltersByRelayAndEmitCacheHits(
   if (!options.allowOlderEvents) {
     onEvent = doNotEmitOlderEvents(onEvent);
   }
-  for (let event of events) {
+  for (const event of events) {
     onEvent(event, false, undefined);
   }
   filters = mergeSimilarAndRemoveEmptyFilters(filters);
   onEvent = matchOnEventFilters(onEvent, filters);
   relays = unique(relays);
-  let filtersByRelay = getFiltersByRelay(filters, relays);
+  const filtersByRelay = getFiltersByRelay(filters, relays);
   return [onEvent, filtersByRelay];
 }
 
@@ -44,12 +44,12 @@ function getFiltersByRelay(
   filters: (Filter & {relay?: string})[],
   relays: string[]
 ): Map<string, Filter[]> {
-  let filtersByRelay = new Map<string, Filter[]>();
-  let filtersWithoutRelay: Filter[] = [];
-  for (let filter of filters) {
-    let relay = filter.relay;
+  const filtersByRelay = new Map<string, Filter[]>();
+  const filtersWithoutRelay: Filter[] = [];
+  for (const filter of filters) {
+    const relay = filter.relay;
     if (relay) {
-      let relayFilters = filtersByRelay.get(relay);
+      const relayFilters = filtersByRelay.get(relay);
       if (relayFilters) {
         relayFilters.push(withoutRelay(filter));
       } else {
@@ -60,8 +60,8 @@ function getFiltersByRelay(
     }
   }
   if (filtersWithoutRelay.length > 0) {
-    for (let relay of relays) {
-      let filters = filtersByRelay.get(relay);
+    for (const relay of relays) {
+      const filters = filtersByRelay.get(relay);
       if (filters) {
         filtersByRelay.set(relay, filters.concat(filtersWithoutRelay));
       } else {
@@ -81,11 +81,11 @@ function withoutRelay(filter: Filter & {relay?: string}): Filter {
 export function batchFiltersByRelay(
   subscribedFilters: [OnEvent, Map<string, Filter[]>][]
 ): [OnEvent, Map<string, Filter[]>] {
-  let filtersByRelay = new Map<string, Filter[]>();
-  let onEvents: OnEvent[] = [];
-  for (let [onEvent, filtersByRelayBySub] of subscribedFilters) {
-    for (let [relay, filters] of filtersByRelayBySub) {
-      let filtersByRelayFilters = filtersByRelay.get(relay);
+  const filtersByRelay = new Map<string, Filter[]>();
+  const onEvents: OnEvent[] = [];
+  for (const [onEvent, filtersByRelayBySub] of subscribedFilters) {
+    for (const [relay, filters] of filtersByRelayBySub) {
+      const filtersByRelayFilters = filtersByRelay.get(relay);
       if (filtersByRelayFilters) {
         filtersByRelay.set(relay, filtersByRelayFilters.concat(filters));
       } else {
@@ -94,8 +94,8 @@ export function batchFiltersByRelay(
     }
     onEvents.push(onEvent);
   }
-  let onEvent: OnEvent = (event, afterEose, url) => {
-    for (let onEvent of onEvents) {
+  const onEvent: OnEvent = (event, afterEose, url) => {
+    for (const onEvent of onEvents) {
       onEvent(event, afterEose, url);
     }
   };

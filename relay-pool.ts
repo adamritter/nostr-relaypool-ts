@@ -8,7 +8,7 @@ import {
   groupFiltersByRelayAndEmitCacheHits,
 } from "./group-filters-by-relay";
 
-let unique = (arr: string[]) => [...new Set(arr)];
+const unique = (arr: string[]) => [...new Set(arr)];
 
 type OnEose = (
   eventsByThisSub: (Event & {id: string})[] | undefined,
@@ -28,18 +28,18 @@ export class RelayPool {
       this.eventCache = new EventCache();
     }
     if (relays) {
-      for (let relay of unique(relays)) {
+      for (const relay of unique(relays)) {
         this.addOrGetRelay(relay);
       }
     }
   }
 
   addOrGetRelay(relay: string): Relay {
-    let relayInstance = this.relayByUrl.get(relay);
-    if (relayInstance) {
-      return relayInstance;
+    const origRelayInstance = this.relayByUrl.get(relay);
+    if (origRelayInstance) {
+      return origRelayInstance;
     }
-    relayInstance = relayInit(relay);
+    const relayInstance = relayInit(relay);
     this.relayByUrl.set(relay, relayInstance);
     relayInstance.connect().then(
       (onfulfilled) => {
@@ -55,8 +55,8 @@ export class RelayPool {
   }
 
   async close() {
-    let promises = [];
-    for (let relayInstance of this.relayByUrl.values()) {
+    const promises = [];
+    for (const relayInstance of this.relayByUrl.values()) {
       promises.push(relayInstance.close());
     }
     this.relayByUrl.clear();
@@ -69,13 +69,13 @@ export class RelayPool {
     onEvent: OnEvent,
     onEose?: OnEose
   ): Sub | undefined {
-    let mergedAndRemovedEmptyFilters =
+    const mergedAndRemovedEmptyFilters =
       mergeSimilarAndRemoveEmptyFilters(filters);
     if (mergedAndRemovedEmptyFilters.length === 0) {
       return;
     }
-    let instance = this.addOrGetRelay(relay);
-    let sub = instance.sub(mergedAndRemovedEmptyFilters);
+    const instance = this.addOrGetRelay(relay);
+    const sub = instance.sub(mergedAndRemovedEmptyFilters);
     let eventsBySub: (Event & {id: string})[] | undefined = [];
     sub.on("event", (event: Event & {id: string}) => {
       this.eventCache?.addEvent(event);
@@ -96,9 +96,9 @@ export class RelayPool {
     onEvent: OnEvent,
     onEose?: OnEose
   ): () => void {
-    let subs: Sub[] = [];
-    for (let [relay, filters] of filtersByRelay) {
-      let sub = this.#subscribeRelay(relay, filters, onEvent, onEose);
+    const subs: Sub[] = [];
+    for (const [relay, filters] of filtersByRelay) {
+      const sub = this.#subscribeRelay(relay, filters, onEvent, onEose);
       if (sub) {
         subs.push(sub);
       }
@@ -111,7 +111,7 @@ export class RelayPool {
     this.timer = undefined;
     this.minMaxDelayms = Infinity;
 
-    let [onEvent, filtersByRelay]: [OnEvent, Map<string, Filter[]>] =
+    const [onEvent, filtersByRelay]: [OnEvent, Map<string, Filter[]>] =
       batchFiltersByRelay(this.filtersToSubscribe);
     this.filtersToSubscribe = [];
 
@@ -144,13 +144,14 @@ export class RelayPool {
     if (maxDelayms && onEose) {
       throw new Error("maxDelayms and onEose cannot be used together");
     }
-    let [dedupedOnEvent, filtersByRelay] = groupFiltersByRelayAndEmitCacheHits(
-      filters,
-      relays,
-      onEvent,
-      options,
-      this.eventCache
-    );
+    const [dedupedOnEvent, filtersByRelay] =
+      groupFiltersByRelayAndEmitCacheHits(
+        filters,
+        relays,
+        onEvent,
+        options,
+        this.eventCache
+      );
     this.filtersToSubscribe.push([dedupedOnEvent, filtersByRelay]);
     if (maxDelayms) {
       this.#resetTimer(maxDelayms);
@@ -177,8 +178,8 @@ export class RelayPool {
   }
 
   publish(event: Event, relays: string[]) {
-    for (let relay of unique(relays)) {
-      let instance = this.addOrGetRelay(relay);
+    for (const relay of unique(relays)) {
+      const instance = this.addOrGetRelay(relay);
       instance.publish(event);
     }
   }

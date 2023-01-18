@@ -37,9 +37,9 @@ export class EventCache {
     ) {
       return undefined;
     }
-    let authors: string[] = [];
-    let events = new Set<Event & {id: string}>();
-    for (let author of filter.authors) {
+    const authors: string[] = [];
+    const events = new Set<Event & {id: string}>();
+    for (const author of filter.authors) {
       let contactEvent;
       if (filter.kinds.includes(Kind.Contacts)) {
         contactEvent = this.contactsByPubKey.get(author);
@@ -75,10 +75,10 @@ export class EventCache {
       return undefined;
     }
 
-    let events = new Set<Event & {id: string}>();
-    let ids: string[] = [];
-    for (let id of filter.ids) {
-      let event = this.getEventById(id);
+    const events = new Set<Event & {id: string}>();
+    const ids: string[] = [];
+    for (const id of filter.ids) {
+      const event = this.getEventById(id);
       if (event) {
         events.add(event);
       } else {
@@ -95,15 +95,15 @@ export class EventCache {
     filters: (Filter & {relay?: string})[];
     events: (Event & {id: string})[];
   } {
-    let events: Set<Event & {id: string}> = new Set();
-    let new_filters: (Filter & {relay?: string})[] = [];
-    for (let filter of filters) {
-      let new_data = this.#getCachedEventsByIdWithUpdatedFilter(filter) ||
+    const events: Set<Event & {id: string}> = new Set();
+    const new_filters: (Filter & {relay?: string})[] = [];
+    for (const filter of filters) {
+      const new_data = this.#getCachedEventsByIdWithUpdatedFilter(filter) ||
         this.#getCachedEventsByPubKeyWithUpdatedFilter(filter) || {
           filter,
           events: [],
         };
-      for (let event of new_data.events) {
+      for (const event of new_data.events) {
         events.add(event);
       }
       new_filters.push(new_data.filter);

@@ -12,14 +12,14 @@ import {InMemoryRelayServer} from "./in-memory-relay-server";
 
 let relaypool: RelayPool;
 
-// let relayurls = ['wss://nostr-dev.wellorder.net/']
-// let relayurls2 = ['wss://nostr.v0l.io/']
+// const relayurls = ['wss://nostr-dev.wellorder.net/']
+// const relayurls2 = ['wss://nostr.v0l.io/']
 
-let relayurls = ["ws://localhost:8083/"];
-let relayurls2 = ["ws://localhost:8084/"];
+const relayurls = ["ws://localhost:8083/"];
+const relayurls2 = ["ws://localhost:8084/"];
 
-let _relayServer: InMemoryRelayServer = new InMemoryRelayServer(8083);
-let _relayServer2: InMemoryRelayServer = new InMemoryRelayServer(8084);
+const _relayServer: InMemoryRelayServer = new InMemoryRelayServer(8083);
+const _relayServer2: InMemoryRelayServer = new InMemoryRelayServer(8084);
 
 beforeEach(() => {
   relaypool = new RelayPool(relayurls);
@@ -39,22 +39,22 @@ afterAll(async () => {
 async function publishAndGetEvent(
   relays: string[]
 ): Promise<Event & {id: string}> {
-  let sk = generatePrivateKey();
-  let pk = getPublicKey(sk);
-  let event = {
+  const sk = generatePrivateKey();
+  const pk = getPublicKey(sk);
+  const event = {
     kind: 27572,
     pubkey: pk,
     created_at: Math.floor(Date.now() / 1000),
     tags: [],
     content: "nostr-tools test suite",
   };
-  let eventId = getEventHash(event);
+  const eventId = getEventHash(event);
   // @ts-ignore
   event.id = eventId;
   // @ts-ignore
   event.sig = signEvent(event, sk);
   relaypool.publish(event, relays);
-  let a = relaypool.getEventById(eventId, relays, Infinity);
+  const a = relaypool.getEventById(eventId, relays, Infinity);
   relaypool.sendSubscriptions();
   await a;
   // @ts-ignore
@@ -62,11 +62,11 @@ async function publishAndGetEvent(
 }
 
 test("querying relaypool", async () => {
-  let event = await publishAndGetEvent(relayurls);
+  const event = await publishAndGetEvent(relayurls);
   expect(event.kind).toEqual(27572);
   var resolve1: (success: boolean) => void;
   var resolve2: (success: boolean) => void;
-  let promiseAll = Promise.all([
+  const promiseAll = Promise.all([
     new Promise((resolve) => {
       resolve1 = resolve;
     }),
@@ -102,10 +102,10 @@ test("querying relaypool", async () => {
 });
 
 test("listening and publishing", async () => {
-  let sk = generatePrivateKey();
-  let pk = getPublicKey(sk);
+  const sk = generatePrivateKey();
+  const pk = getPublicKey(sk);
 
-  let event = {
+  const event = {
     kind: 27572,
     pubkey: pk,
     created_at: Math.floor(Date.now() / 1000),
@@ -144,11 +144,11 @@ test("listening and publishing", async () => {
 });
 
 test("relay option in filter", async () => {
-  let event = await publishAndGetEvent(relayurls);
+  const event = await publishAndGetEvent(relayurls);
 
   var resolve1: (success: boolean) => void;
   var resolve2: (success: boolean) => void;
-  let promiseAll = Promise.all([
+  const promiseAll = Promise.all([
     new Promise((resolve) => {
       resolve1 = resolve;
     }),
@@ -185,10 +185,10 @@ test("relay option in filter", async () => {
 });
 
 test("cached result", async () => {
-  let sk = generatePrivateKey();
-  let pk = getPublicKey(sk);
+  const sk = generatePrivateKey();
+  const pk = getPublicKey(sk);
 
-  let event = {
+  const event = {
     kind: 27572,
     pubkey: pk,
     created_at: Math.floor(Date.now() / 1000),
@@ -221,7 +221,7 @@ test("cached result", async () => {
     })
   ).resolves.toEqual(true);
 
-  let secondOnEvent = new Promise((resolve) => {
+  const secondOnEvent = new Promise((resolve) => {
     relaypool.subscribe(
       [
         {
@@ -243,7 +243,7 @@ test("cached result", async () => {
 });
 
 test("remove duplicates", async () => {
-  let event = await publishAndGetEvent(relayurls);
+  const event = await publishAndGetEvent(relayurls);
 
   await expect(
     new Promise((resolve) => {
@@ -318,7 +318,7 @@ test("remove duplicates", async () => {
   ).resolves.toEqual(true);
 
   let counter2 = 0;
-  let thirdOnEvent = new Promise((resolve) => {
+  const thirdOnEvent = new Promise((resolve) => {
     relaypool.subscribe(
       [
         {
@@ -350,10 +350,10 @@ test("remove duplicates", async () => {
 });
 
 test("cache authors", async () => {
-  let sk = generatePrivateKey();
-  let pk = getPublicKey(sk);
+  const sk = generatePrivateKey();
+  const pk = getPublicKey(sk);
 
-  let event = {
+  const event = {
     kind: 27572,
     pubkey: pk,
     created_at: Math.floor(Date.now() / 1000),
@@ -410,10 +410,10 @@ test("cache authors", async () => {
 });
 
 test("kind3", async () => {
-  let sk = generatePrivateKey();
-  let pk = getPublicKey(sk);
+  const sk = generatePrivateKey();
+  const pk = getPublicKey(sk);
 
-  let event = {
+  const event = {
     kind: 3,
     pubkey: pk,
     created_at: Math.floor(Date.now() / 1000),
@@ -446,7 +446,7 @@ test("kind3", async () => {
     })
   ).resolves.toEqual(true);
 
-  let secondOnEvent = new Promise((resolve) => {
+  const secondOnEvent = new Promise((resolve) => {
     relaypool.subscribe(
       [
         {
@@ -468,10 +468,10 @@ test("kind3", async () => {
 });
 
 test("kind0", async () => {
-  let sk = generatePrivateKey();
-  let pk = getPublicKey(sk);
+  const sk = generatePrivateKey();
+  const pk = getPublicKey(sk);
 
-  let event = {
+  const event = {
     kind: 0,
     pubkey: pk,
     created_at: Math.floor(Date.now() / 1000),
@@ -504,7 +504,7 @@ test("kind0", async () => {
     })
   ).resolves.toEqual(true);
 
-  let secondOnEvent = new Promise((resolve) => {
+  const secondOnEvent = new Promise((resolve) => {
     relaypool.subscribe(
       [
         {
@@ -524,7 +524,7 @@ test("kind0", async () => {
 
   await expect(secondOnEvent).resolves.toEqual(true);
 
-  let thirdOnEvent = new Promise((resolve) => {
+  const thirdOnEvent = new Promise((resolve) => {
     relaypool.subscribe(
       [
         {

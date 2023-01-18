@@ -68,7 +68,7 @@ describe("EventDemultiplexer", () => {
   });
 
   test.skip("many filters", () => {
-    let time = new Date().getTime();
+    const time = new Date().getTime();
     let counter = 0;
     const onEvent = () => {
       counter++;
@@ -96,9 +96,9 @@ describe("EventDemultiplexer", () => {
   });
 
   test.skip("many filters using matchFilter", () => {
-    let time = new Date().getTime();
+    const time = new Date().getTime();
     let counter = 0;
-    let filters: Filter[] = [];
+    const filters: Filter[] = [];
     for (let i = 0; i < 2000; i++) {
       filters.push({ids: ["" + i * 3]});
     }
@@ -111,8 +111,8 @@ describe("EventDemultiplexer", () => {
       created_at: 0,
     };
     for (let i = 0; i < 2000; i++) {
-      let e = {...event, id: "" + i * 2};
-      for (let filter of filters) {
+      const e = {...event, id: "" + i * 2};
+      for (const filter of filters) {
         if (matchFilter(filter, e)) {
           counter++;
         }

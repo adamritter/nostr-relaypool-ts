@@ -1,7 +1,7 @@
 import {Event, Filter, matchFilters} from "nostr-tools";
 import {WebSocket, WebSocketServer} from "isomorphic-ws";
 
-let _ = WebSocket; // Importing WebSocket is needed for WebSocketServer to work
+const _ = WebSocket; // Importing WebSocket is needed for WebSocketServer to work
 
 export class InMemoryRelayServer {
   events: (Event & {id: string})[] = [];
@@ -12,13 +12,13 @@ export class InMemoryRelayServer {
     this.wss.on("connection", (ws) => {
       // console.log('connected')
       ws.on("message", (message) => {
-        let data = JSON.parse(message.toString());
+        const data = JSON.parse(message.toString());
         // console.log('received: %s', JSON.stringify(data))
         if (data && data[0] === "REQ") {
-          let sub = data[1];
-          let filters = data.slice(2);
+          const sub = data[1];
+          const filters = data.slice(2);
           this.subs.set(sub, filters);
-          for (let event of this.events) {
+          for (const event of this.events) {
             if (matchFilters(filters, event)) {
               // console.log('sending event to sub %s', sub, JSON.stringify(['EVENT', sub, event]))
               ws.send(JSON.stringify(["EVENT", sub, event]));
@@ -27,16 +27,16 @@ export class InMemoryRelayServer {
           // console.log('sending eose to sub %s', sub, JSON.stringify(['EOSE', sub]))
           ws.send(JSON.stringify(["EOSE", sub]));
         } else if (data && data[0] === "EVENT") {
-          let event = data[1];
+          const event = data[1];
           this.events.push(event);
-          for (let [sub, filters] of this.subs) {
+          for (const [sub, filters] of this.subs) {
             if (matchFilters(filters, event)) {
               // console.log('sending event to sub %s', sub, JSON.stringify(['EVENT', sub, event]))
               ws.send(JSON.stringify(["EVENT", sub, event]));
             }
           }
         } else if (data && data[0] === "CLOSE") {
-          let sub = data[1];
+          const sub = data[1];
           this.subs.delete(sub);
         }
       });

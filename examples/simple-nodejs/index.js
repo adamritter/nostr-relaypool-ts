@@ -16,5 +16,5 @@ relayPool.subscribe(
     "wss://nostr.fmt.wiz.biz",
     "wss://relay.snort.social",
   ],
-  console.log
+  (event) => console.log(event.id)
 );
