@@ -79,12 +79,12 @@ class RelayC {
       this.sendOnConnect.push(msg);
     }
   }
+  resolveClose: (() => void) | undefined = undefined;
 
   relayInit(): Relay {
     let this2 = this;
     let url = this.url;
     let ws = this.ws;
-    var resolveClose: () => void;
     let sendOnConnect = this.sendOnConnect;
     var openSubs = this.openSubs;
     var listeners = this.listeners;
@@ -97,8 +97,8 @@ class RelayC {
         this2.ws = ws;
 
         ws.onopen = () => {
-          if (resolveClose) {
-            resolveClose();
+          if (this2.resolveClose) {
+            this2.resolveClose();
             return;
           }
           this2.connected = true;
@@ -121,7 +121,7 @@ class RelayC {
         ws.onclose = async () => {
           this2.connected = false;
           listeners.disconnect.forEach((cb) => cb());
-          resolveClose && resolveClose();
+          this2.resolveClose && this2.resolveClose();
         };
 
         ws.onmessage = async (e) => {
@@ -301,7 +301,7 @@ class RelayC {
           ws?.close();
         }
         return new Promise<void>((resolve) => {
-          resolveClose = resolve;
+          this2.resolveClose = resolve;
         });
       },
       get status() {
