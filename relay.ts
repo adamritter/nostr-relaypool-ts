@@ -69,6 +69,7 @@ class RelayC {
     };
   } = {};
   relayInit(): Relay {
+    let this2 = this;
     let url = this.url;
     let ws = this.ws;
     var resolveClose: () => void;
@@ -82,6 +83,7 @@ class RelayC {
     async function connectRelay(): Promise<void> {
       return new Promise((resolve, reject) => {
         ws = new WebSocket(url);
+        this2.ws = ws;
 
         ws.onopen = () => {
           if (resolveClose) {
