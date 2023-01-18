@@ -17,7 +17,7 @@ type OnEose = (
 
 export class RelayPool {
   relayByUrl: Map<string, Relay> = new Map();
-  noticecbs: Array<(msg: string) => void> = [];
+  noticecbs: Array<(url: string, msg: string) => void> = [];
   eventCache?: EventCache;
   minMaxDelayms: number = Infinity;
   filtersToSubscribe: [OnEvent, Map<string, Filter[]>][] = [];
@@ -43,8 +43,8 @@ export class RelayPool {
     this.relayByUrl.set(relay, relayInstance);
     relayInstance.connect().then(
       (onfulfilled) => {
-        relayInstance?.on("notice", (msg: string) => {
-          this.noticecbs.forEach((cb) => cb(relay + ": " + msg));
+        relayInstance?.on("notice", (relay: string, msg: string) => {
+          this.noticecbs.forEach((cb) => cb(relay, msg));
         });
       },
       (onrejected) => {
@@ -182,17 +182,17 @@ export class RelayPool {
       instance.publish(event);
     }
   }
-  onnotice(cb: (msg: string) => void) {
+  onnotice(cb: (url: string, msg: string) => void) {
     this.noticecbs.push(cb);
   }
-  onerror(cb: (msg: string) => void) {
+  onerror(cb: (url: string, msg: string) => void) {
     this.relayByUrl.forEach((relay: Relay, url: string) =>
-      relay.on("error", (msg: string) => cb(url + ": " + msg))
+      relay.on("error", (msg: string) => cb(url, msg))
     );
   }
-  ondisconnect(cb: (msg: string) => void) {
+  ondisconnect(cb: (url: string, msg: string) => void) {
     this.relayByUrl.forEach((relay: Relay, url: string) =>
-      relay.on("disconnect", (msg: string) => cb(url + ": " + msg))
+      relay.on("disconnect", (msg: string) => cb(url, msg))
     );
   }
 }
