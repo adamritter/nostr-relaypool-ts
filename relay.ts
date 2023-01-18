@@ -34,40 +34,50 @@ type SubscriptionOptions = {
   id?: string;
 };
 export function relayInit(url: string): Relay {
-  return new RelayC().relayInit(url);
+  return new RelayC(url).relayInit();
 }
 class RelayC {
-  relayInit(url: string): Relay {
-    var ws: WebSocket;
+  url: string;
+  constructor(url: string) {
+    this.url = url;
+  }
+  ws: WebSocket | undefined;
+  sendOnConnect: string[] = [];
+  openSubs: {[id: string]: {filters: Filter[]} & SubscriptionOptions} = {};
+  listeners: {
+    connect: Array<() => void>;
+    disconnect: Array<() => void>;
+    error: Array<() => void>;
+    notice: Array<(msg: string) => void>;
+  } = {
+    connect: [],
+    disconnect: [],
+    error: [],
+    notice: [],
+  };
+  subListeners: {
+    [subid: string]: {
+      event: Array<(event: Event) => void>;
+      eose: Array<() => void>;
+    };
+  } = {};
+  pubListeners: {
+    [eventid: string]: {
+      ok: Array<() => void>;
+      seen: Array<() => void>;
+      failed: Array<(reason: string) => void>;
+    };
+  } = {};
+  relayInit(): Relay {
+    let url = this.url;
+    let ws = this.ws;
     var resolveClose: () => void;
     let connected = false;
-    let sendOnConnect: string[] = [];
-    var openSubs: {[id: string]: {filters: Filter[]} & SubscriptionOptions} =
-      {};
-    var listeners: {
-      connect: Array<() => void>;
-      disconnect: Array<() => void>;
-      error: Array<() => void>;
-      notice: Array<(msg: string) => void>;
-    } = {
-      connect: [],
-      disconnect: [],
-      error: [],
-      notice: [],
-    };
-    var subListeners: {
-      [subid: string]: {
-        event: Array<(event: Event) => void>;
-        eose: Array<() => void>;
-      };
-    } = {};
-    var pubListeners: {
-      [eventid: string]: {
-        ok: Array<() => void>;
-        seen: Array<() => void>;
-        failed: Array<(reason: string) => void>;
-      };
-    } = {};
+    let sendOnConnect = this.sendOnConnect;
+    var openSubs = this.openSubs;
+    var listeners = this.listeners;
+    var subListeners = this.subListeners;
+    var pubListeners = this.pubListeners;
 
     async function connectRelay(): Promise<void> {
       return new Promise((resolve, reject) => {
@@ -84,7 +94,7 @@ class RelayC {
             trySend(["REQ", subid, ...openSubs[subid].filters]);
           }
           for (let msg of sendOnConnect) {
-            ws.send(msg);
+            ws?.send(msg);
           }
           sendOnConnect = [];
 
@@ -161,7 +171,7 @@ class RelayC {
       let msg = JSON.stringify(params);
 
       if (connected) {
-        ws.send(msg);
+        ws?.send(msg);
       } else {
         sendOnConnect.push(msg);
       }
@@ -284,7 +294,7 @@ class RelayC {
       connect,
       close(): Promise<void> {
         if (connected) {
-          ws.close();
+          ws?.close();
         }
         return new Promise<void>((resolve) => {
           resolveClose = resolve;
