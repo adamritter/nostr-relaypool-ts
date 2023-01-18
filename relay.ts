@@ -81,100 +81,100 @@ class RelayC {
   }
   resolveClose: (() => void) | undefined = undefined;
 
+  async connectRelay(): Promise<void> {
+    let this2 = this;
+    return new Promise((resolve, reject) => {
+      let ws = new WebSocket(this2.url);
+      this2.ws = ws;
+
+      ws.onopen = () => {
+        if (this2.resolveClose) {
+          this2.resolveClose();
+          return;
+        }
+        this2.connected = true;
+        // TODO: Send ephereal messages after subscription, permament before
+        for (let subid in this2.openSubs) {
+          this2.trySend(["REQ", subid, ...this2.openSubs[subid].filters]);
+        }
+        for (let msg of this2.sendOnConnect) {
+          ws?.send(msg);
+        }
+        this2.sendOnConnect = [];
+
+        this2.listeners.connect.forEach((cb) => cb());
+        resolve();
+      };
+      ws.onerror = () => {
+        this2.listeners.error.forEach((cb) => cb());
+        reject();
+      };
+      ws.onclose = async () => {
+        this2.connected = false;
+        this2.listeners.disconnect.forEach((cb) => cb());
+        this2.resolveClose && this2.resolveClose();
+      };
+
+      ws.onmessage = async (e) => {
+        var data;
+        try {
+          data = JSON.parse(e.data.toString());
+        } catch (err) {
+          data = e.data;
+        }
+
+        if (data.length >= 1) {
+          switch (data[0]) {
+            case "EVENT":
+              if (data.length !== 3) return; // ignore empty or malformed EVENT
+
+              let id = data[1];
+              let event = data[2];
+              if (
+                validateEvent(event) &&
+                this2.openSubs[id] &&
+                (this2.openSubs[id].skipVerification ||
+                  verifySignature(event)) &&
+                matchFilters(this2.openSubs[id].filters, event)
+              ) {
+                this2.openSubs[id];
+                (this2.subListeners[id]?.event || []).forEach((cb) =>
+                  cb(event)
+                );
+              }
+              return;
+            case "EOSE": {
+              if (data.length !== 2) return; // ignore empty or malformed EOSE
+              let id = data[1];
+              (this2.subListeners[id]?.eose || []).forEach((cb) => cb());
+              return;
+            }
+            case "OK": {
+              if (data.length < 3) return; // ignore empty or malformed OK
+              let id: string = data[1];
+              let ok: boolean = data[2];
+              let reason: string = data[3] || "";
+              if (ok) this2.pubListeners[id]?.ok.forEach((cb) => cb());
+              else this2.pubListeners[id]?.failed.forEach((cb) => cb(reason));
+              return;
+            }
+            case "NOTICE":
+              if (data.length !== 2) return; // ignore empty or malformed NOTICE
+              let notice = data[1];
+              this2.listeners.notice.forEach((cb) => cb(notice));
+              return;
+          }
+        }
+      };
+    });
+  }
+
+  async connect(): Promise<void> {
+    if (this.ws?.readyState && this.ws.readyState === 1) return; // ws already open
+    await this.connectRelay();
+  }
   relayInit(): Relay {
     let this2 = this;
-
-    async function connectRelay(): Promise<void> {
-      return new Promise((resolve, reject) => {
-        let ws = new WebSocket(this2.url);
-        this2.ws = ws;
-
-        ws.onopen = () => {
-          if (this2.resolveClose) {
-            this2.resolveClose();
-            return;
-          }
-          this2.connected = true;
-          // TODO: Send ephereal messages after subscription, permament before
-          for (let subid in this2.openSubs) {
-            this2.trySend(["REQ", subid, ...this2.openSubs[subid].filters]);
-          }
-          for (let msg of this2.sendOnConnect) {
-            ws?.send(msg);
-          }
-          this2.sendOnConnect = [];
-
-          this2.listeners.connect.forEach((cb) => cb());
-          resolve();
-        };
-        ws.onerror = () => {
-          this2.listeners.error.forEach((cb) => cb());
-          reject();
-        };
-        ws.onclose = async () => {
-          this2.connected = false;
-          this2.listeners.disconnect.forEach((cb) => cb());
-          this2.resolveClose && this2.resolveClose();
-        };
-
-        ws.onmessage = async (e) => {
-          var data;
-          try {
-            data = JSON.parse(e.data.toString());
-          } catch (err) {
-            data = e.data;
-          }
-
-          if (data.length >= 1) {
-            switch (data[0]) {
-              case "EVENT":
-                if (data.length !== 3) return; // ignore empty or malformed EVENT
-
-                let id = data[1];
-                let event = data[2];
-                if (
-                  validateEvent(event) &&
-                  this2.openSubs[id] &&
-                  (this2.openSubs[id].skipVerification ||
-                    verifySignature(event)) &&
-                  matchFilters(this2.openSubs[id].filters, event)
-                ) {
-                  this2.openSubs[id];
-                  (this2.subListeners[id]?.event || []).forEach((cb) =>
-                    cb(event)
-                  );
-                }
-                return;
-              case "EOSE": {
-                if (data.length !== 2) return; // ignore empty or malformed EOSE
-                let id = data[1];
-                (this2.subListeners[id]?.eose || []).forEach((cb) => cb());
-                return;
-              }
-              case "OK": {
-                if (data.length < 3) return; // ignore empty or malformed OK
-                let id: string = data[1];
-                let ok: boolean = data[2];
-                let reason: string = data[3] || "";
-                if (ok) this2.pubListeners[id]?.ok.forEach((cb) => cb());
-                else this2.pubListeners[id]?.failed.forEach((cb) => cb(reason));
-                return;
-              }
-              case "NOTICE":
-                if (data.length !== 2) return; // ignore empty or malformed NOTICE
-                let notice = data[1];
-                this2.listeners.notice.forEach((cb) => cb(notice));
-                return;
-            }
-          }
-        };
-      });
-    }
-
-    async function connect(): Promise<void> {
-      if (this2.ws?.readyState && this2.ws.readyState === 1) return; // ws already open
-      await connectRelay();
-    }
 
     const sub = (
       filters: Filter[],
@@ -291,7 +291,7 @@ class RelayC {
           },
         };
       },
-      connect,
+      connect: this2.connect.bind(this2),
       close(): Promise<void> {
         if (this2.connected) {
           this2.ws?.close();
