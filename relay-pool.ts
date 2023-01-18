@@ -10,7 +10,8 @@ import {
 
 const unique = (arr: string[]) => [...new Set(arr)];
 
-type OnEose = (
+export {type OnEvent} from "./on-event-filters";
+export type OnEose = (
   eventsByThisSub: (Event & {id: string})[] | undefined,
   url: string
 ) => void;
