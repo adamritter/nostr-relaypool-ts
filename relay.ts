@@ -135,38 +135,38 @@ class RelayC {
       }
     }
   }
+  onopen(opened: () => void) {
+    let this2 = this;
+    if (this2.resolveClose) {
+      this2.resolveClose();
+      return;
+    }
+    this2.connected = true;
+    // TODO: Send ephereal messages after subscription, permament before
+    for (let subid in this2.openSubs) {
+      this2.trySend(["REQ", subid, ...this2.openSubs[subid].filters]);
+    }
+    for (let msg of this2.sendOnConnect) {
+      this.ws?.send(msg);
+    }
+    this2.sendOnConnect = [];
+
+    this2.listeners.connect.forEach((cb) => cb());
+    opened();
+  }
 
   async connectRelay(): Promise<void> {
-    let this2 = this;
     return new Promise((resolve, reject) => {
-      let ws = new WebSocket(this2.url);
-      this2.ws = ws;
+      let ws = new WebSocket(this.url);
+      this.ws = ws;
 
-      ws.onopen = () => {
-        if (this2.resolveClose) {
-          this2.resolveClose();
-          return;
-        }
-        this2.connected = true;
-        // TODO: Send ephereal messages after subscription, permament before
-        for (let subid in this2.openSubs) {
-          this2.trySend(["REQ", subid, ...this2.openSubs[subid].filters]);
-        }
-        for (let msg of this2.sendOnConnect) {
-          ws?.send(msg);
-        }
-        this2.sendOnConnect = [];
-
-        this2.listeners.connect.forEach((cb) => cb());
-        resolve();
-      };
+      ws.onopen = this.onopen.bind(this, resolve);
       ws.onerror = () => {
-        this2.listeners.error.forEach((cb) => cb());
+        this.listeners.error.forEach((cb) => cb());
         reject();
       };
-      ws.onclose = this2.onclose.bind(this2);
-
-      ws.onmessage = this2.onmessage.bind(this2);
+      ws.onclose = this.onclose.bind(this);
+      ws.onmessage = this.onmessage.bind(this);
     });
   }
 
