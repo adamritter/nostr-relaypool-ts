@@ -83,12 +83,10 @@ class RelayC {
 
   relayInit(): Relay {
     let this2 = this;
-    let ws = this.ws;
-    var pubListeners = this.pubListeners;
 
     async function connectRelay(): Promise<void> {
       return new Promise((resolve, reject) => {
-        ws = new WebSocket(this2.url);
+        let ws = new WebSocket(this2.url);
         this2.ws = ws;
 
         ws.onopen = () => {
@@ -158,8 +156,8 @@ class RelayC {
                 let id: string = data[1];
                 let ok: boolean = data[2];
                 let reason: string = data[3] || "";
-                if (ok) pubListeners[id]?.ok.forEach((cb) => cb());
-                else pubListeners[id]?.failed.forEach((cb) => cb(reason));
+                if (ok) this2.pubListeners[id]?.ok.forEach((cb) => cb());
+                else this2.pubListeners[id]?.failed.forEach((cb) => cb(reason));
                 return;
               }
               case "NOTICE":
@@ -174,7 +172,7 @@ class RelayC {
     }
 
     async function connect(): Promise<void> {
-      if (ws?.readyState && ws.readyState === 1) return; // ws already open
+      if (this2.ws?.readyState && this2.ws.readyState === 1) return; // ws already open
       await connectRelay();
     }
 
@@ -229,7 +227,7 @@ class RelayC {
       sub,
       on: (type: RelayEvent, cb: any): void => {
         this2.listeners[type].push(cb);
-        if (type === "connect" && ws?.readyState === 1) {
+        if (type === "connect" && this2.ws?.readyState === 1) {
           cb();
         }
       },
@@ -260,25 +258,25 @@ class RelayC {
             id: `monitor-${id.slice(0, 5)}`,
           });
           let willUnsub = setTimeout(() => {
-            (pubListeners[id]?.failed || []).forEach((cb) =>
+            (this2.pubListeners[id]?.failed || []).forEach((cb) =>
               cb("event not seen after 5 seconds")
             );
             monitor.unsub();
           }, 5000);
           monitor.on("event", () => {
             clearTimeout(willUnsub);
-            (pubListeners[id]?.seen || []).forEach((cb) => cb());
+            (this2.pubListeners[id]?.seen || []).forEach((cb) => cb());
           });
         };
 
         return {
           on: (type: "ok" | "seen" | "failed", cb: any) => {
-            pubListeners[id] = pubListeners[id] || {
+            this2.pubListeners[id] = this2.pubListeners[id] || {
               ok: [],
               seen: [],
               failed: [],
             };
-            pubListeners[id][type].push(cb);
+            this2.pubListeners[id][type].push(cb);
 
             if (type === "seen") {
               if (sent) startMonitoring();
@@ -286,7 +284,7 @@ class RelayC {
             }
           },
           off: (type: "ok" | "seen" | "failed", cb: any) => {
-            let listeners = pubListeners[id];
+            let listeners = this2.pubListeners[id];
             if (!listeners) return;
             let idx = listeners[type].indexOf(cb);
             if (idx >= 0) listeners[type].splice(idx, 1);
@@ -296,14 +294,14 @@ class RelayC {
       connect,
       close(): Promise<void> {
         if (this2.connected) {
-          ws?.close();
+          this2.ws?.close();
         }
         return new Promise<void>((resolve) => {
           this2.resolveClose = resolve;
         });
       },
       get status() {
-        return ws?.readyState ?? 3;
+        return this2.ws?.readyState ?? 3;
       },
     };
   }
