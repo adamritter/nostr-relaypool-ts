@@ -196,10 +196,10 @@ test("cached result", async () => {
     content: "nostr-tools test suite",
   };
   // @ts-ignore
-  event.id = getEventHash(event);
-  // @ts-ignore
-  event.sig = await signEvent(event, sk);
+  event.sig = signEvent(event, sk);
   relaypool.publish(event, relayurls);
+  // @ts-ignore
+  event.id = getEventHash(event);
 
   await expect(
     new Promise((resolve) => {
@@ -363,7 +363,7 @@ test("cache authors", async () => {
   // @ts-ignore
   event.id = getEventHash(event);
   // @ts-ignore
-  event.sig = await signEvent(event, sk);
+  event.sig = signEvent(event, sk);
 
   await expect(
     new Promise((resolve) => {
@@ -382,6 +382,7 @@ test("cache authors", async () => {
           resolve(true);
         }
       );
+      // @ts-ignore
       relaypool.publish(event, relayurls2);
     })
   ).resolves.toEqual(true);
@@ -404,6 +405,7 @@ test("cache authors", async () => {
           resolve(true);
         }
       );
+      // @ts-ignore
       relaypool.publish(event, relayurls2);
     })
   ).resolves.toEqual(true);
@@ -423,7 +425,7 @@ test("kind3", async () => {
   // @ts-ignore
   event.id = getEventHash(event);
   // @ts-ignore
-  event.sig = await signEvent(event, sk);
+  event.sig = signEvent(event, sk);
   relaypool.publish(event, relayurls);
 
   await expect(
@@ -481,7 +483,7 @@ test("kind0", async () => {
   // @ts-ignore
   event.id = getEventHash(event);
   // @ts-ignore
-  event.sig = await signEvent(event, sk);
+  event.sig = signEvent(event, sk);
   relaypool.publish(event, relayurls);
 
   await expect(

@@ -1,10 +1,11 @@
-import {Filter, Event, matchFilter} from "nostr-tools";
+import {Filter, matchFilter} from "nostr-tools";
 import {OnEvent} from "./on-event-filters";
+import {Event} from "./event";
 
 export class EventDemultiplexer {
   filterAndOnEventByEvent: Map<string, [Filter, OnEvent][]> = new Map();
   #addEventUsingEventKey(
-    event: Event & {id: string},
+    event: Event,
     afterEose: boolean,
     url: string | undefined,
     eventKey: string
@@ -19,11 +20,7 @@ export class EventDemultiplexer {
     }
   }
 
-  onEvent(
-    event: Event & {id: string},
-    afterEose: boolean,
-    url: string | undefined
-  ) {
+  onEvent(event: Event, afterEose: boolean, url: string | undefined) {
     this.#addEventUsingEventKey(event, afterEose, url, `ids:${event.id}`);
     this.#addEventUsingEventKey(
       event,

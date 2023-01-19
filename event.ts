@@ -1,8 +1,10 @@
 import {Event as NostrToolsEvent, Kind} from "nostr-tools";
 import {Author} from "./author";
-import {OnEvent, RelayPool} from "./relay-pool";
+import {RelayPool} from "./relay-pool";
 
+export type {NostrToolsEvent};
 export type NostrToolsEventWithId = NostrToolsEvent & {id: string};
+import type {OnEvent} from "./on-event-filters";
 export class Event implements NostrToolsEventWithId {
   id: string;
   kind: Kind;

@@ -1,4 +1,4 @@
-import {Event, Filter} from "nostr-tools";
+import {Filter} from "nostr-tools";
 import {mergeSimilarAndRemoveEmptyFilters} from "./merge-similar-filters";
 import {
   doNotEmitDuplicateEvents,
@@ -7,6 +7,7 @@ import {
   type OnEvent,
 } from "./on-event-filters";
 import {EventCache} from "./event-cache";
+import {Event} from "./event";
 
 const unique = (arr: string[]) => [...new Set(arr)];
 

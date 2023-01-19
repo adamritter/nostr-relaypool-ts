@@ -1,8 +1,9 @@
-import {Event, Filter, Sub} from "nostr-tools";
+import {Filter, getEventHash, Sub} from "nostr-tools";
 import {mergeSimilarAndRemoveEmptyFilters} from "./merge-similar-filters";
 import {type Relay, relayInit} from "./relay";
 import {type OnEvent} from "./on-event-filters";
 import {EventCache} from "./event-cache";
+import {Event, NostrToolsEvent, NostrToolsEventWithId} from "./event";
 import {
   batchFiltersByRelay,
   groupFiltersByRelayAndEmitCacheHits,
@@ -12,7 +13,7 @@ const unique = (arr: string[]) => [...new Set(arr)];
 
 export {type OnEvent} from "./on-event-filters";
 export type OnEose = (
-  eventsByThisSub: (Event & {id: string})[] | undefined,
+  eventsByThisSub: Event[] | undefined,
   url: string
 ) => void;
 
@@ -77,8 +78,13 @@ export class RelayPool {
     }
     const instance = this.addOrGetRelay(relay);
     const sub = instance.sub(mergedAndRemovedEmptyFilters);
-    let eventsBySub: (Event & {id: string})[] | undefined = [];
-    sub.on("event", (event: Event & {id: string}) => {
+    let eventsBySub: Event[] | undefined = [];
+    sub.on("event", (nostrEvent: NostrToolsEventWithId) => {
+      let event = new Event(
+        nostrEvent,
+        this,
+        Array.from(this.relayByUrl.keys())
+      );
       this.eventCache?.addEvent(event);
       eventsBySub?.push(event);
       onEvent(event, eventsBySub === undefined, relay);
@@ -165,7 +171,7 @@ export class RelayPool {
     id: string,
     relays: string[],
     maxDelayms: number
-  ): Promise<Event & {id: string}> {
+  ): Promise<Event> {
     return new Promise((resolve, reject) => {
       this.subscribe(
         [{ids: [id]}],
@@ -178,15 +184,18 @@ export class RelayPool {
     });
   }
 
-  publish(event: Event, relays: string[]) {
+  publish(event: NostrToolsEvent, relays: string[]) {
+    const eventWithId = {...event, id: getEventHash(event)};
     for (const relay of unique(relays)) {
       const instance = this.addOrGetRelay(relay);
-      instance.publish(event);
+      instance.publish(eventWithId);
     }
   }
+
   onnotice(cb: (url: string, msg: string) => void) {
     this.noticecbs.push(cb);
   }
+
   onerror(cb: (url: string, msg: string) => void) {
     this.relayByUrl.forEach((relay: Relay, url: string) =>
       relay.on("error", (msg: string) => cb(url, msg))

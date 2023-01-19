@@ -1,8 +1,12 @@
 /* eslint-env jest */
 
-import {Event, Filter, matchFilter} from "nostr-tools";
+import {Filter, matchFilter} from "nostr-tools";
 import {EventDemultiplexer} from "./event-demultiplexer";
+import {Event, NostrToolsEventWithId} from "./event";
+import {RelayPool} from "./relay-pool";
 
+let eventFrom = (event: NostrToolsEventWithId) =>
+  new Event(event, new RelayPool(), []);
 describe("EventDemultiplexer", () => {
   let demultiplexer: EventDemultiplexer;
 
@@ -23,14 +27,14 @@ describe("EventDemultiplexer", () => {
     const filters = [{ids: ["123"]}];
     const onEvent = jest.fn();
     demultiplexer.subscribe(filters, onEvent);
-    const event: Event & {id: string} = {
+    const event: Event = eventFrom({
       id: "123",
       kind: 1,
       pubkey: "abc",
       tags: [],
       content: "",
       created_at: 0,
-    };
+    });
     demultiplexer.onEvent(event, true, "https://example.com");
     expect(onEvent).toHaveBeenCalledWith(event, true, "https://example.com");
   });
@@ -39,14 +43,14 @@ describe("EventDemultiplexer", () => {
     const filters = [{ids: ["456"]}];
     const onEvent = jest.fn();
     demultiplexer.subscribe(filters, onEvent);
-    const event: Event & {id: string} = {
+    const event: Event = eventFrom({
       id: "123",
       kind: 1,
       pubkey: "abc",
       tags: [],
       content: "",
       created_at: 0,
-    };
+    });
     demultiplexer.onEvent(event, true, "https://example.com");
     expect(onEvent).not.toHaveBeenCalled();
   });
@@ -55,14 +59,14 @@ describe("EventDemultiplexer", () => {
     const filters = [{ids: [""]}];
     const onEvent = jest.fn();
     demultiplexer.subscribe(filters, onEvent);
-    const event: Event & {id: string} = {
+    const event: Event = eventFrom({
       id: "",
       kind: 0,
       pubkey: "",
       tags: [],
       content: "",
       created_at: 0,
-    };
+    });
     demultiplexer.onEvent(event, true, "");
     expect(onEvent).toHaveBeenCalledWith(event, true, "");
   });
@@ -76,17 +80,17 @@ describe("EventDemultiplexer", () => {
     for (let i = 0; i < 2000; i++) {
       demultiplexer.subscribe([{ids: ["" + i * 3]}], onEvent);
     }
-    const event: Event & {id: string} = {
+    const event: Event = eventFrom({
       id: "123",
       kind: 1,
       pubkey: "abc",
       tags: [],
       content: "",
       created_at: 0,
-    };
+    });
     for (let i = 0; i < 2000; i++) {
       demultiplexer.onEvent(
-        {...event, id: "" + i * 2},
+        eventFrom({...event, id: "" + i * 2}),
         true,
         "https://example.com"
       );
@@ -102,14 +106,14 @@ describe("EventDemultiplexer", () => {
     for (let i = 0; i < 2000; i++) {
       filters.push({ids: ["" + i * 3]});
     }
-    const event: Event & {id: string} = {
+    const event: Event = eventFrom({
       id: "123",
       kind: 1,
       pubkey: "abc",
       tags: [],
       content: "",
       created_at: 0,
-    };
+    });
     for (let i = 0; i < 2000; i++) {
       const e = {...event, id: "" + i * 2};
       for (const filter of filters) {
