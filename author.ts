@@ -24,14 +24,12 @@ export class Author {
       maxDelayms
     );
   }
-  subscribe(filter: Filter, cb: OnEvent, maxDelayms: number): () => void {
+  subscribe(filters: Filter[], cb: OnEvent, maxDelayms: number): () => void {
     return this.relayPool.subscribe(
-      [
-        {
-          authors: [this.pubkey],
-          ...filter,
-        },
-      ],
+      filters.map((filter) => ({
+        authors: [this.pubkey],
+        ...filter,
+      })),
       this.relays,
       cb,
       maxDelayms
@@ -90,6 +88,42 @@ export class Author {
     );
   }
 
+  secondFollows(
+    cb: (pubkeysWithWeight: [string, number][]) => void,
+    maxDelayms: number
+  ): () => void {
+    return this.followsPubkeys((pubkeys) => {
+      let sfollows = new Map<string, number>();
+      for (const pubkey of pubkeys) {
+        this.relayPool.subscribe(
+          [
+            {
+              authors: [pubkey],
+              kinds: [Kind.Contacts],
+            },
+          ],
+          this.relays,
+          (event: Event) => {
+            let dweight = 1.0 / event.tags.length;
+            for (const tag of event.tags) {
+              if (tag[0] === "p") {
+                let weight = sfollows.get(tag[1]);
+                if (weight) {
+                  weight += dweight;
+                } else {
+                  weight = dweight;
+                }
+                sfollows.set(tag[1], weight);
+              }
+            }
+            cb([...sfollows].sort((a, b) => b[1] - a[1]));
+          },
+          maxDelayms
+        );
+      }
+    }, maxDelayms);
+  }
+
   allEvents(cb: OnEvent, limit = 100, maxDelayms: number): () => void {
     return this.relayPool.subscribe(
       [
@@ -109,6 +143,39 @@ export class Author {
       [
         {
           "#p": [this.pubkey],
+          limit,
+        },
+      ],
+      this.relays,
+      cb,
+      maxDelayms
+    );
+  }
+  sentAndRecievedDMs(cb: OnEvent, limit = 100, maxDelayms: number): () => void {
+    return this.relayPool.subscribe(
+      [
+        {
+          authors: [this.pubkey],
+          kinds: [Kind.EncryptedDirectMessage],
+          limit,
+        },
+        {
+          "#p": [this.pubkey],
+          kinds: [Kind.EncryptedDirectMessage],
+          limit,
+        },
+      ],
+      this.relays,
+      cb,
+      maxDelayms
+    );
+  }
+  text(cb: OnEvent, limit = 100, maxDelayms: number): () => void {
+    return this.relayPool.subscribe(
+      [
+        {
+          authors: [this.pubkey],
+          kinds: [Kind.Text],
           limit,
         },
       ],

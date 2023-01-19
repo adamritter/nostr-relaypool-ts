@@ -42,7 +42,7 @@ test("metaData", () => {
 test("followsPubkeys", () => {
   const relayPool = new RelayPool();
   const author = new Author(relayPool, relays, pubkey);
-  author.subscribe({kinds: [Kind.Contacts]}, console.log, 0);
+  author.subscribe([{kinds: [Kind.Contacts]}], console.log, 0);
   return new Promise((resolve) => {
     const unsubscribe = author.followsPubkeys((pubkeys) => {
       unsubscribe();
@@ -59,7 +59,7 @@ test("followsPubkeys", () => {
 test("followsAuthors", () => {
   const relayPool = new RelayPool();
   const author = new Author(relayPool, relays, pubkey);
-  author.subscribe({kinds: [Kind.Contacts]}, console.log, 0);
+  author.subscribe([{kinds: [Kind.Contacts]}], console.log, 0);
   return new Promise((resolve) => {
     const unsubscribe = author.follows((authors) => {
       unsubscribe();
@@ -78,7 +78,7 @@ test("followsAuthors", () => {
 test("allEvents", () => {
   const relayPool = new RelayPool();
   const author = new Author(relayPool, relays, pubkey);
-  author.subscribe({kinds: [Kind.Contacts]}, console.log, 0);
+  author.subscribe([{kinds: [Kind.Contacts]}], console.log, 0);
   return new Promise((resolve) => {
     const unsubscribe = author.allEvents(
       (events) => {
