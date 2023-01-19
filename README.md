@@ -240,7 +240,7 @@ Author::sentAndRecievedDMs(cb: OnEvent, limit = 100, maxDelayms: number): () => 
 
 Author::text(cb: OnEvent, limit = 100, maxDelayms: number): () => void
 
-collect(onEvents: (events: Event[]) => void): OnEvent
+collect(onEvents: (events: Event[]) => void): OnEvent  // Keeps events array sorted by created_at
 
 ```
 
