@@ -67,6 +67,36 @@ relayPool.onnotice((notice) => {
 ```
 <br/>
 
+# Experimental API wrapper for RelayPool
+This is the first taste of an API wrapper that makes RelayPool easier to use. It's experimental (many methods haven't been tested at all) and subject to change significantly.
+
+The first parameter is OnEvent, last parameter is always maxDelayms, and the middle parameter is limit if it's needed.
+
+An unsubscribe function is returned, although it's not implemented yet.
+
+```typescript
+const pubkey =
+  "32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245";
+const relays = [
+  "wss://relay.damus.io",
+  "wss://nostr.fmt.wiz.biz",
+  "wss://relay.snort.social",
+];
+const relayPool = new RelayPool();
+const author = new Author(relayPool, relays, pubkey);
+author.metaData(console.log, 0)
+author.follows(console.log, 0)
+author.followers(console.log, 0)
+author.subscribe([{kinds: [Kind.Contacts]}], console.log, 0);
+author.allEvents(console.log, 5, 0)
+author.referenced(console.log, 5, 0)
+author.followers(console.log, 50, 0)
+author.sentAndRecievedDMs(console.log, 50, 0)
+author.text(console.log, 10, 0)
+
+```
+
+
 # API documentation:
 
 
@@ -173,34 +203,6 @@ RelayPool::onnotice(cb: (msg: string)=>void)
 RelayPool::onerror(cb: (msg: string)=>void)
 ```
 
-# Experimental API wrapper for RelayPool
-This is the first taste of an API wrapper that makes RelayPool easier to use. It's experimental (many methods haven't been tested at all) and subject to change significantly.
-
-The first parameter is OnEvent, last parameter is always maxDelayms, and the middle parameter is limit if it's needed.
-
-An unsubscribe function is returned, although it's not implemented yet.
-
-```typescript
-const pubkey =
-  "32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245";
-const relays = [
-  "wss://relay.damus.io",
-  "wss://nostr.fmt.wiz.biz",
-  "wss://relay.snort.social",
-];
-const relayPool = new RelayPool();
-const author = new Author(relayPool, relays, pubkey);
-author.metaData(console.log, 0)
-author.follows(console.log, 0)
-author.followers(console.log, 0)
-author.subscribe([{kinds: [Kind.Contacts]}], console.log, 0);
-author.allEvents(console.log, 5, 0)
-author.referenced(console.log, 5, 0)
-author.followers(console.log, 50, 0)
-author.sentAndRecievedDMs(console.log, 50, 0)
-author.text(console.log, 10, 0)
-
-```
 
 # Support:
 
