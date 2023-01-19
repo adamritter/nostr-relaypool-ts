@@ -199,8 +199,6 @@ author.referenced(console.log, 5, 0)
 author.followers(console.log, 50, 0)
 author.sentAndRecievedDMs(console.log, 50, 0)
 author.text(console.log, 10, 0)
-// Returns all pubkeys followed by follows with a weight and sorted by importance.
-author.secondFollows(console.log, 0)
 
 ```
 
