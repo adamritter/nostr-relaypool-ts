@@ -198,9 +198,30 @@ Other API functions:
 ```typescript
 RelayPool::publish(event: Event, relays: string[])
 
-RelayPool::onnotice(cb: (msg: string)=>void)
+RelayPool::onnotice(cb: (url: string, msg: string) => void)
 
-RelayPool::onerror(cb: (msg: string)=>void)
+RelayPool::onerror(cb: (url: string, msg: string) => void)
+
+new Author(relayPool: RelayPool, relays: string[], pubkey: string)
+
+Author::metaData(cb: (event: Event) => void, maxDelayms: number): () => void
+
+Author::subscribe(filters: Filter[], cb: OnEvent, maxDelayms: number): () => void
+
+Author::followsPubkeys(cb: (pubkeys: string[]) => void, maxDelayms: number): () => void
+
+Author::follows(cb: (authors: Author[]) => void, maxDelayms: number): () => void
+
+Author::allEvents(cb: OnEvent, limit = 100, maxDelayms: number): () => void
+
+Author::referenced(cb: OnEvent, limit = 100, maxDelayms: number): () => void
+
+Author::followers(cb: OnEvent, limit = 100, maxDelayms: number): () => void
+
+Author::sentAndRecievedDMs(cb: OnEvent, limit = 100, maxDelayms: number): () => void
+
+Author::text(cb: OnEvent, limit = 100, maxDelayms: number): () => void
+
 ```
 
 
