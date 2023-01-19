@@ -9,6 +9,14 @@ import {
   groupFiltersByRelayAndEmitCacheHits,
 } from "./group-filters-by-relay";
 
+export function collect(onEvents: (events: Event[]) => void): OnEvent {
+  let events: Event[] = [];
+  return (event: Event, afterEose: boolean, url: string | undefined) => {
+    events.push(event);
+    onEvents(events);
+  };
+}
+
 const unique = (arr: string[]) => [...new Set(arr)];
 
 export {type OnEvent} from "./on-event-filters";
