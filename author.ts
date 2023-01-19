@@ -90,7 +90,8 @@ export class Author {
 
   secondFollows(
     cb: (pubkeysWithWeight: [string, number][]) => void,
-    maxDelayms: number
+    maxDelayms: number,
+    removeDirectFollows = true
   ): () => void {
     return this.followsPubkeys((pubkeys) => {
       let sfollows = new Map<string, number>();
@@ -114,6 +115,11 @@ export class Author {
                   weight = dweight;
                 }
                 sfollows.set(tag[1], weight);
+              }
+            }
+            if (removeDirectFollows) {
+              for (const pubkey of pubkeys) {
+                sfollows.delete(pubkey);
               }
             }
             cb([...sfollows].sort((a, b) => b[1] - a[1]));
@@ -151,6 +157,22 @@ export class Author {
       maxDelayms
     );
   }
+
+  followers(cb: OnEvent, limit = 100, maxDelayms: number): () => void {
+    return this.relayPool.subscribe(
+      [
+        {
+          "#p": [this.pubkey],
+          kinds: [Kind.Contacts],
+          limit,
+        },
+      ],
+      this.relays,
+      cb,
+      maxDelayms
+    );
+  }
+
   sentAndRecievedDMs(cb: OnEvent, limit = 100, maxDelayms: number): () => void {
     return this.relayPool.subscribe(
       [

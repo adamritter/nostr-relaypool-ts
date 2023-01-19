@@ -16,7 +16,6 @@ let relay: Relay;
 const _relayServer: InMemoryRelayServer = new InMemoryRelayServer(8089);
 
 beforeEach(() => {
-  // relay = relayInit('wss://nostr.v0l.io/')
   relay = relayInit("ws://localhost:8089/");
   relay.connect();
   _relayServer.clear();
