@@ -57,9 +57,9 @@ let unsub=relayPool.subscribe([
     (events, relayURL) => { console.log(events, relayURL); }
     )
     
-relayPool.onerror = (relayUrl, err) => {
-    console.log("RelayPool error", err, " from relay ", relayUrl);
-}
+relayPool.onerror((err, relayUrl) => {
+  console.log("RelayPool error", err, " from relay ", relayUrl);
+});
 relayPool.onnotice((relayUrl, notice) => {
     console.log("RelayPool notice", notice, " from relay ", relayUrl);
 })
