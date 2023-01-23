@@ -24,8 +24,15 @@ export class RelayPool {
   minMaxDelayms: number = Infinity;
   filtersToSubscribe: [OnEvent, Map<string, Filter[]>][] = [];
   timer?: ReturnType<typeof setTimeout>;
+  externalGetEventById?: (id: string) => Event;
 
-  constructor(relays?: string[], options: {noCache?: boolean} = {}) {
+  constructor(
+    relays?: string[],
+    options: {
+      noCache?: boolean;
+      externalGetEventById?: (id: string) => Event;
+    } = {}
+  ) {
     if (!options.noCache) {
       this.eventCache = new EventCache();
     }
@@ -43,8 +50,11 @@ export class RelayPool {
     }
     const relayInstance = relayInit(
       relay,
-      // @ts-ignore
-      this.eventCache ? (id) => this.eventCache?.getEventById(id) : undefined
+      this.externalGetEventById
+        ? this.externalGetEventById
+        : this.eventCache
+        ? (id) => this.eventCache?.getEventById(id)
+        : undefined
     );
     this.relayByUrl.set(relay, relayInstance);
     relayInstance.connect().then(
