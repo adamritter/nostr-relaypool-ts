@@ -6,6 +6,7 @@
 import {type Event, verifySignature, validateEvent} from "nostr-tools";
 import {type Filter, matchFilters} from "nostr-tools";
 import WebSocket from "isomorphic-ws";
+import {getHex64} from "./fakejson";
 
 type RelayEvent = "connect" | "disconnect" | "error" | "notice";
 
@@ -34,13 +35,18 @@ type SubscriptionOptions = {
   skipVerification?: boolean;
   id?: string;
 };
-export function relayInit(url: string): Relay {
-  return new RelayC(url).relayInit();
+export function relayInit(
+  url: string,
+  alreadyHaveEvent?: (id: string) => boolean
+): Relay {
+  return new RelayC(url, alreadyHaveEvent).relayInit();
 }
 class RelayC {
   url: string;
-  constructor(url: string) {
+  alreadyHaveEvent?: (id: string) => boolean;
+  constructor(url: string, alreadyHaveEvent?: (id: string) => boolean) {
     this.url = url;
+    this.alreadyHaveEvent = alreadyHaveEvent;
   }
   ws: WebSocket | undefined;
   sendOnConnect: string[] = [];
@@ -91,8 +97,15 @@ class RelayC {
   async onmessage(e: any) {
     const this2 = this;
     let data;
+    let json: string = e.data.toString();
+    if (
+      !json ||
+      (this.alreadyHaveEvent && this.alreadyHaveEvent(getHex64(json, "id")))
+    ) {
+      return;
+    }
     try {
-      data = JSON.parse(e.data.toString());
+      data = JSON.parse(json);
     } catch (err) {
       data = e.data;
     }

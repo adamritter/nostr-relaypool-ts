@@ -20,6 +20,10 @@ export class EventCache {
     return this.eventsById.get(id);
   }
 
+  hasEventById(id: string): boolean {
+    return this.eventsById.has(id);
+  }
+
   #getCachedEventsByPubKeyWithUpdatedFilter(
     filter: Filter & {
       relay?: string;

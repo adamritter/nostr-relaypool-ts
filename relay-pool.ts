@@ -41,7 +41,7 @@ export class RelayPool {
     if (origRelayInstance) {
       return origRelayInstance;
     }
-    const relayInstance = relayInit(relay);
+    const relayInstance = relayInit(relay, this.eventCache?.hasEventById);
     this.relayByUrl.set(relay, relayInstance);
     relayInstance.connect().then(
       (onfulfilled) => {

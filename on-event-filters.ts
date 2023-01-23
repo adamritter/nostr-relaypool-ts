@@ -41,3 +41,11 @@ export function matchOnEventFilters(
     }
   };
 }
+
+export function emitEventsOnNextTick(onEvent: OnEvent): OnEvent {
+  return (event: Event, afterEose: boolean, url: string | undefined) => {
+    setTimeout(() => {
+      onEvent(event, afterEose, url);
+    }, 0);
+  };
+}
