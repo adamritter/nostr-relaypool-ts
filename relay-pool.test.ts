@@ -36,9 +36,7 @@ afterAll(async () => {
   await _relayServer2.close();
 });
 
-async function publishAndGetEvent(
-  relays: string[]
-): Promise<Event & {id: string}> {
+function createSignedEvent(): Event & {id: string} {
   const sk = generatePrivateKey();
   const pk = getPublicKey(sk);
   const event = {
@@ -53,13 +51,62 @@ async function publishAndGetEvent(
   event.id = eventId;
   // @ts-ignore
   event.sig = signEvent(event, sk);
+  // @ts-ignore
+  return event;
+}
+
+async function publishAndGetEvent(
+  relays: string[]
+): Promise<Event & {id: string}> {
+  const event = createSignedEvent();
   relaypool.publish(event, relays);
-  const a = relaypool.getEventById(eventId, relays, Infinity);
+  const a = relaypool.getEventById(event.id, relays, Infinity);
   relaypool.sendSubscriptions();
   await a;
   // @ts-ignore
   return event;
 }
+test("external geteventbyid", async () => {
+  const event = await publishAndGetEvent(relayurls);
+  var resolve1: (success: boolean) => void;
+  var resolve2: (success: boolean) => void;
+  const promiseAll = Promise.all([
+    new Promise((resolve) => {
+      resolve1 = resolve;
+    }),
+    new Promise((resolve) => {
+      resolve2 = resolve;
+    }),
+  ]);
+  let relaypool = new RelayPool(relayurls, {
+    externalGetEventById: (id) => {
+      if (id === event.id) {
+        resolve2(true);
+        return event;
+      }
+    },
+  });
+  expect(event.kind).toEqual(27572);
+
+  relaypool.subscribe(
+    [
+      {
+        kinds: [27572], // Force no caching
+      },
+    ],
+    relayurls,
+    (event, afterEose, url) => {
+      expect(event).toHaveProperty("id", event.id);
+      expect(afterEose).toBe(false);
+      // expect(url).toBe(relayurls[0])
+      resolve1(true);
+    },
+    undefined,
+    undefined
+  );
+
+  return expect(promiseAll).resolves.toEqual([true, true]);
+});
 
 test("querying relaypool", async () => {
   const event = await publishAndGetEvent(relayurls);

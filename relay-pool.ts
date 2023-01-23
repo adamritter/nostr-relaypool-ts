@@ -24,15 +24,16 @@ export class RelayPool {
   minMaxDelayms: number = Infinity;
   filtersToSubscribe: [OnEvent, Map<string, Filter[]>][] = [];
   timer?: ReturnType<typeof setTimeout>;
-  externalGetEventById?: (id: string) => Event;
+  externalGetEventById?: (id: string) => NostrToolsEventWithId | undefined;
 
   constructor(
     relays?: string[],
     options: {
       noCache?: boolean;
-      externalGetEventById?: (id: string) => Event;
+      externalGetEventById?: (id: string) => NostrToolsEventWithId | undefined;
     } = {}
   ) {
+    this.externalGetEventById = options.externalGetEventById;
     if (!options.noCache) {
       this.eventCache = new EventCache();
     }
