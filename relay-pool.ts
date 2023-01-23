@@ -44,7 +44,7 @@ export class RelayPool {
     const relayInstance = relayInit(
       relay,
       // @ts-ignore
-      this.eventCache ? (id) => this.eventCache.hasEventById(id) : undefined
+      this.eventCache ? (id) => this.eventCache?.getEventById(id) : undefined
     );
     this.relayByUrl.set(relay, relayInstance);
     relayInstance.connect().then(

@@ -5,6 +5,14 @@ export function getHex64(json: string, field: string): string {
   return json.slice(s, s + 64);
 }
 
+export function getSubName(json: string): string {
+  let idx = json.indexOf(`"EVENT"`) + 7;
+  let sliced = json.slice(idx);
+  let idx2 = sliced.indexOf(`"`) + 1;
+  let sliced2 = sliced.slice(idx2);
+  return sliced2.slice(0, sliced2.indexOf(`"`));
+}
+
 export function getInt(json: string, field: string): number {
   let len = field.length;
   let idx = json.indexOf(`"${field}":`) + len + 3;

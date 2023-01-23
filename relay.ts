@@ -6,7 +6,7 @@
 import {type Event, verifySignature, validateEvent} from "nostr-tools";
 import {type Filter, matchFilters} from "nostr-tools";
 import WebSocket from "isomorphic-ws";
-import {getHex64} from "./fakejson";
+import {getHex64, getSubName} from "./fakejson";
 
 type RelayEvent = "connect" | "disconnect" | "error" | "notice";
 
@@ -37,14 +37,17 @@ type SubscriptionOptions = {
 };
 export function relayInit(
   url: string,
-  alreadyHaveEvent?: (id: string) => boolean
+  alreadyHaveEvent?: (id: string) => (Event & {id: string}) | undefined
 ): Relay {
   return new RelayC(url, alreadyHaveEvent).relayInit();
 }
 class RelayC {
   url: string;
-  alreadyHaveEvent?: (id: string) => boolean;
-  constructor(url: string, alreadyHaveEvent?: (id: string) => boolean) {
+  alreadyHaveEvent?: (id: string) => (Event & {id: string}) | undefined;
+  constructor(
+    url: string,
+    alreadyHaveEvent?: (id: string) => (Event & {id: string}) | undefined
+  ) {
     this.url = url;
     this.alreadyHaveEvent = alreadyHaveEvent;
   }
@@ -98,11 +101,16 @@ class RelayC {
     const this2 = this;
     let data;
     let json: string = e.data.toString();
-    if (
-      !json ||
-      (this.alreadyHaveEvent && this.alreadyHaveEvent(getHex64(json, "id")))
-    ) {
+    if (!json) {
       return;
+    }
+    let event =
+      this.alreadyHaveEvent && this.alreadyHaveEvent(getHex64(json, "id"));
+    if (event) {
+      return this2.subListeners[getSubName(json)].event.forEach((cb) =>
+        // @ts-ignore
+        cb(event)
+      );
     }
     try {
       data = JSON.parse(json);

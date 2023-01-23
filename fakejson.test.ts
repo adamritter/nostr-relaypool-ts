@@ -32,4 +32,10 @@ test("match kind", () => {
       12720
     )
   ).toBeTruthy();
+
+  expect(
+    fj.getSubName(
+      `["EVENT","nostril-query",{"tags":[],"content":"so did we cut all corners and p2p stuff in order to make a decentralized social network that was fast and worked, but in the end what we got was a lot of very slow clients that can't handle the traffic of one jack dorsey tweet?","sig":"ca62629d189edebb8f0811cfa0ac53015013df5f305dcba3f411ba15cfc4074d8c2d517ee7d9e81c9eb72a7328bfbe31c9122156397565ac55e740404e2b1fe7","id":"fef2a50f7d9d3d5a5f38ee761bc087ec16198d3f0140df6d1e8193abf7c2b146","kind":1,"pubkey":"3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d","created_at":1671150419}]`
+    )
+  ).toBe("nostril-query");
 });
