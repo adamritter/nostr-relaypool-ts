@@ -122,7 +122,7 @@ export class Author {
                 sfollows.delete(pubkey);
               }
             }
-            cb([...sfollows].sort((a, b) => b[1] - a[1]));
+            cb(Array.from(sfollows.entries()).sort((a, b) => b[1] - a[1]));
           },
           maxDelayms
         );
