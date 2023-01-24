@@ -25,15 +25,18 @@ export class RelayPool {
   filtersToSubscribe: [OnEvent, Map<string, Filter[]>][] = [];
   timer?: ReturnType<typeof setTimeout>;
   externalGetEventById?: (id: string) => NostrToolsEventWithId | undefined;
+  dontLogSubscriptions?: boolean = false;
 
   constructor(
     relays?: string[],
     options: {
       noCache?: boolean;
       externalGetEventById?: (id: string) => NostrToolsEventWithId | undefined;
+      dontLogSubscriptions?: boolean;
     } = {}
   ) {
     this.externalGetEventById = options.externalGetEventById;
+    this.dontLogSubscriptions = options.dontLogSubscriptions;
     if (!options.noCache) {
       this.eventCache = new EventCache();
     }
@@ -118,6 +121,12 @@ export class RelayPool {
     onEvent: OnEvent,
     onEose?: OnEose
   ): () => void {
+    if (filtersByRelay.size === 0) {
+      return () => {};
+    }
+    if (!this.dontLogSubscriptions) {
+      console.log("RelayPool subscribing to relays", filtersByRelay);
+    }
     const subs: Sub[] = [];
     for (const [relay, filters] of filtersByRelay) {
       const sub = this.#subscribeRelay(relay, filters, onEvent, onEose);

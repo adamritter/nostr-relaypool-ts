@@ -116,7 +116,7 @@ author.text(console.log, 10, 0);
 # API documentation:
 
 ```typescript
-RelayPool(relays:string[] = [], options:{noCache?: boolean} = {})
+RelayPool(relays:string[] = [], options:{noCache?: boolean, dontLogSubscriptions?: boolean} = {})
 ```
 
 RelayPool constructor connects to the given relays, but it doesn't determine which relays are used for specific subscriptions.
@@ -126,6 +126,8 @@ It caches all events and returns filtering id and 0 / 3 kinds with requested pub
 options:
 
 - noCache: turns off caching of events that is done by default.
+- dontLogSubscriptions: turns of logging subscriptions.
+  It's on by default as it's just 1 entry per RelayPool subscription, and it can help clients significantly
 
 <br/>
 
