@@ -150,20 +150,7 @@ test("querying relaypool", async () => {
 });
 
 test("listening and publishing", async () => {
-  const sk = generatePrivateKey();
-  const pk = getPublicKey(sk);
-
-  const event = {
-    kind: 27572,
-    pubkey: pk,
-    created_at: Math.floor(Date.now() / 1000),
-    tags: [],
-    content: "nostr-tools test suite",
-  };
-  // @ts-ignore
-  event.id = getEventHash(event);
-  // @ts-ignore
-  event.sig = signEvent(event, sk);
+  const event = createSignedEvent();
 
   let resolve2: (success: boolean) => void;
 
@@ -171,12 +158,12 @@ test("listening and publishing", async () => {
     [
       {
         kinds: [27572],
-        authors: [pk],
+        authors: [event.pubkey],
       },
     ],
     relayurls,
     (event) => {
-      expect(event).toHaveProperty("pubkey", pk);
+      expect(event).toHaveProperty("pubkey", event.pubkey);
       expect(event).toHaveProperty("kind", 27572);
       expect(event).toHaveProperty("content", "nostr-tools test suite");
       resolve2(true);
@@ -233,21 +220,8 @@ test("relay option in filter", async () => {
 });
 
 test("cached result", async () => {
-  const sk = generatePrivateKey();
-  const pk = getPublicKey(sk);
-
-  const event = {
-    kind: 27572,
-    pubkey: pk,
-    created_at: Math.floor(Date.now() / 1000),
-    tags: [],
-    content: "nostr-tools test suite",
-  };
-  // @ts-ignore
-  event.sig = signEvent(event, sk);
+  const event = createSignedEvent();
   relaypool.publish(event, relayurls);
-  // @ts-ignore
-  event.id = getEventHash(event);
 
   await expect(
     new Promise((resolve) => {
@@ -255,12 +229,12 @@ test("cached result", async () => {
         [
           {
             kinds: [27572],
-            authors: [pk],
+            authors: [event.pubkey],
           },
         ],
         relayurls,
         (event) => {
-          expect(event).toHaveProperty("pubkey", pk);
+          expect(event).toHaveProperty("pubkey", event.pubkey);
           expect(event).toHaveProperty("kind", 27572);
           expect(event).toHaveProperty("content", "nostr-tools test suite");
           resolve(true);
@@ -279,7 +253,7 @@ test("cached result", async () => {
       ],
       [],
       (event) => {
-        expect(event).toHaveProperty("pubkey", pk);
+        expect(event).toHaveProperty("pubkey", event.pubkey);
         expect(event).toHaveProperty("kind", 27572);
         expect(event).toHaveProperty("content", "nostr-tools test suite");
         resolve(true);
