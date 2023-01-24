@@ -78,7 +78,8 @@ test("external geteventbyid", async () => {
       resolve2 = resolve;
     }),
   ]);
-  let relaypool = new RelayPool(relayurls, {
+  relaypool.close();
+  relaypool = new RelayPool(relayurls, {
     externalGetEventById: (id) => {
       if (id === event.id) {
         resolve2(true);
