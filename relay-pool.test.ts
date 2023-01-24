@@ -36,11 +36,11 @@ afterAll(async () => {
   await _relayServer2.close();
 });
 
-function createSignedEvent(): Event & {id: string} {
+function createSignedEvent(kind = 27572): Event & {id: string} {
   const sk = generatePrivateKey();
   const pk = getPublicKey(sk);
   const event = {
-    kind: 27572,
+    kind,
     pubkey: pk,
     created_at: Math.floor(Date.now() / 1000),
     tags: [],
@@ -372,20 +372,8 @@ test("remove duplicates", async () => {
 });
 
 test("cache authors", async () => {
-  const sk = generatePrivateKey();
-  const pk = getPublicKey(sk);
-
-  const event = {
-    kind: 27572,
-    pubkey: pk,
-    created_at: Math.floor(Date.now() / 1000),
-    tags: [],
-    content: "nostr-tools test suite",
-  };
-  // @ts-ignore
-  event.id = getEventHash(event);
-  // @ts-ignore
-  event.sig = signEvent(event, sk);
+  let event = createSignedEvent();
+  let pk = event.pubkey;
 
   await expect(
     new Promise((resolve) => {
@@ -434,21 +422,9 @@ test("cache authors", async () => {
 });
 
 test("kind3", async () => {
-  const sk = generatePrivateKey();
-  const pk = getPublicKey(sk);
-
-  const event = {
-    kind: 3,
-    pubkey: pk,
-    created_at: Math.floor(Date.now() / 1000),
-    tags: [],
-    content: "nostr-tools test suite",
-  };
-  // @ts-ignore
-  event.id = getEventHash(event);
-  // @ts-ignore
-  event.sig = signEvent(event, sk);
+  let event = createSignedEvent(3);
   relaypool.publish(event, relayurls);
+  let pk = event.pubkey;
 
   await expect(
     new Promise((resolve) => {
@@ -492,22 +468,9 @@ test("kind3", async () => {
 });
 
 test("kind0", async () => {
-  const sk = generatePrivateKey();
-  const pk = getPublicKey(sk);
-
-  const event = {
-    kind: 0,
-    pubkey: pk,
-    created_at: Math.floor(Date.now() / 1000),
-    tags: [],
-    content: "nostr-tools test suite",
-  };
-  // @ts-ignore
-  event.id = getEventHash(event);
-  // @ts-ignore
-  event.sig = signEvent(event, sk);
+  let event = createSignedEvent(0);
   relaypool.publish(event, relayurls);
-
+  let pk = event.pubkey;
   await expect(
     new Promise((resolve) => {
       relaypool.subscribe(
