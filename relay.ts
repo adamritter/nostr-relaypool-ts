@@ -266,68 +266,12 @@ class RelayC {
 
   relayInit(): Relay {
     const this2 = this;
-    const sub = this.getSub();
     return {
       url: this2.url,
-      sub,
+      sub: this2.sub.bind(this2),
       on: this2.on.bind(this2),
       off: this2.off.bind(this2),
-      publish(event: Event): Pub {
-        if (!event.id) throw new Error(`event ${event} has no id`);
-        const id = event.id;
-
-        let sent = false;
-        let mustMonitor = false;
-
-        this2
-          .trySend(["EVENT", event])
-          .then(() => {
-            sent = true;
-            if (mustMonitor) {
-              startMonitoring();
-              mustMonitor = false;
-            }
-          })
-          .catch(() => {});
-
-        const startMonitoring = () => {
-          const monitor = sub([{ids: [id]}], {
-            id: `monitor-${id.slice(0, 5)}`,
-          });
-          const willUnsub = setTimeout(() => {
-            (this2.pubListeners[id]?.failed || []).forEach((cb) =>
-              cb("event not seen after 5 seconds")
-            );
-            monitor.unsub();
-          }, 5000);
-          monitor.on("event", () => {
-            clearTimeout(willUnsub);
-            (this2.pubListeners[id]?.seen || []).forEach((cb) => cb());
-          });
-        };
-
-        return {
-          on: (type: "ok" | "seen" | "failed", cb: any) => {
-            this2.pubListeners[id] = this2.pubListeners[id] || {
-              ok: [],
-              seen: [],
-              failed: [],
-            };
-            this2.pubListeners[id][type].push(cb);
-
-            if (type === "seen") {
-              if (sent) startMonitoring();
-              else mustMonitor = true;
-            }
-          },
-          off: (type: "ok" | "seen" | "failed", cb: any) => {
-            const listeners = this2.pubListeners[id];
-            if (!listeners) return;
-            const idx = listeners[type].indexOf(cb);
-            if (idx >= 0) listeners[type].splice(idx, 1);
-          },
-        };
-      },
+      publish: this2.publish.bind(this2),
       connect: this2.connect.bind(this2),
       close(): Promise<void> {
         return this2.close();
@@ -358,5 +302,66 @@ class RelayC {
   off(type: RelayEvent, cb: any) {
     const index = this.listeners[type].indexOf(cb);
     if (index !== -1) this.listeners[type].splice(index, 1);
+  }
+
+  publish(event: Event): Pub {
+    const this2 = this;
+    if (!event.id) throw new Error(`event ${event} has no id`);
+    const id = event.id;
+
+    let sent = false;
+    let mustMonitor = false;
+
+    this2
+      .trySend(["EVENT", event])
+      .then(() => {
+        sent = true;
+        if (mustMonitor) {
+          startMonitoring();
+          mustMonitor = false;
+        }
+      })
+      .catch(() => {});
+
+    const startMonitoring = () => {
+      const monitor = this.sub([{ids: [id]}], {
+        id: `monitor-${id.slice(0, 5)}`,
+      });
+      const willUnsub = setTimeout(() => {
+        (this2.pubListeners[id]?.failed || []).forEach((cb) =>
+          cb("event not seen after 5 seconds")
+        );
+        monitor.unsub();
+      }, 5000);
+      monitor.on("event", () => {
+        clearTimeout(willUnsub);
+        (this2.pubListeners[id]?.seen || []).forEach((cb) => cb());
+      });
+    };
+
+    return {
+      on: (type: "ok" | "seen" | "failed", cb: any) => {
+        this2.pubListeners[id] = this2.pubListeners[id] || {
+          ok: [],
+          seen: [],
+          failed: [],
+        };
+        this2.pubListeners[id][type].push(cb);
+
+        if (type === "seen") {
+          if (sent) startMonitoring();
+          else mustMonitor = true;
+        }
+      },
+      off: (type: "ok" | "seen" | "failed", cb: any) => {
+        const listeners = this2.pubListeners[id];
+        if (!listeners) return;
+        const idx = listeners[type].indexOf(cb);
+        if (idx >= 0) listeners[type].splice(idx, 1);
+      },
+    };
+  }
+  sub(filters: Filter[], opts?: SubscriptionOptions): Sub {
+    return this.getSub()(filters, opts);
   }
 }
