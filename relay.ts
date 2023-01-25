@@ -214,56 +214,6 @@ class RelayC {
     await this.connectRelay();
   }
 
-  getSub() {
-    const this2 = this;
-    const sub = (
-      filters: Filter[],
-      {
-        skipVerification = false,
-        id = Math.random().toString().slice(2),
-      }: SubscriptionOptions = {}
-    ): Sub => {
-      const subid = id;
-
-      this2.openSubs[subid] = {
-        id: subid,
-        filters,
-        skipVerification,
-      };
-      if (this2.connected) {
-        this2.trySend(["REQ", subid, ...filters]);
-      }
-
-      return {
-        sub: (newFilters, newOpts = {}) =>
-          sub(newFilters || filters, {
-            skipVerification: newOpts.skipVerification || skipVerification,
-            id: subid,
-          }),
-        unsub: () => {
-          delete this2.openSubs[subid];
-          delete this2.subListeners[subid];
-          if (this2.connected) {
-            this2.trySend(["CLOSE", subid]);
-          }
-        },
-        on: (type: "event" | "eose", cb: any): void => {
-          this2.subListeners[subid] = this2.subListeners[subid] || {
-            event: [],
-            eose: [],
-          };
-          this2.subListeners[subid][type].push(cb);
-        },
-        off: (type: "event" | "eose", cb: any): void => {
-          const listeners = this2.subListeners[subid];
-          const idx = listeners[type].indexOf(cb);
-          if (idx >= 0) listeners[type].splice(idx, 1);
-        },
-      };
-    };
-    return sub;
-  }
-
   relayInit(): Relay {
     const this2 = this;
     return {
@@ -361,7 +311,46 @@ class RelayC {
       },
     };
   }
-  sub(filters: Filter[], opts?: SubscriptionOptions): Sub {
-    return this.getSub()(filters, opts);
+
+  sub(filters: Filter[], opts: SubscriptionOptions = {}): Sub {
+    const this2 = this;
+    const subid = opts.id || Math.random().toString().slice(2);
+    const skipVerification = opts.skipVerification || false;
+
+    this2.openSubs[subid] = {
+      id: subid,
+      filters,
+      skipVerification,
+    };
+    if (this2.connected) {
+      this2.trySend(["REQ", subid, ...filters]);
+    }
+
+    return {
+      sub: (newFilters, newOpts = {}) =>
+        this.sub(newFilters || filters, {
+          skipVerification: newOpts.skipVerification || skipVerification,
+          id: subid,
+        }),
+      unsub: () => {
+        delete this2.openSubs[subid];
+        delete this2.subListeners[subid];
+        if (this2.connected) {
+          this2.trySend(["CLOSE", subid]);
+        }
+      },
+      on: (type: "event" | "eose", cb: any): void => {
+        this2.subListeners[subid] = this2.subListeners[subid] || {
+          event: [],
+          eose: [],
+        };
+        this2.subListeners[subid][type].push(cb);
+      },
+      off: (type: "event" | "eose", cb: any): void => {
+        const listeners = this2.subListeners[subid];
+        const idx = listeners[type].indexOf(cb);
+        if (idx >= 0) listeners[type].splice(idx, 1);
+      },
+    };
   }
 }
