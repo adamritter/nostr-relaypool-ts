@@ -270,16 +270,8 @@ class RelayC {
     return {
       url: this2.url,
       sub,
-      on: (type: RelayEvent, cb: any): void => {
-        this2.listeners[type].push(cb);
-        if (type === "connect" && this2.ws?.readyState === 1) {
-          cb();
-        }
-      },
-      off: (type: RelayEvent, cb: any): void => {
-        const index = this2.listeners[type].indexOf(cb);
-        if (index !== -1) this2.listeners[type].splice(index, 1);
-      },
+      on: this2.on.bind(this2),
+      off: this2.off.bind(this2),
       publish(event: Event): Pub {
         if (!event.id) throw new Error(`event ${event} has no id`);
         const id = event.id;
@@ -338,16 +330,33 @@ class RelayC {
       },
       connect: this2.connect.bind(this2),
       close(): Promise<void> {
-        if (this2.connected) {
-          this2.ws?.close();
-        }
-        return new Promise<void>((resolve) => {
-          this2.resolveClose = resolve;
-        });
+        return this2.close();
       },
       get status() {
-        return this2.ws?.readyState ?? 3;
+        return this2.status;
       },
     };
+  }
+  get status() {
+    return this.ws?.readyState ?? 3;
+  }
+  close(): Promise<void> {
+    if (this.connected) {
+      this.ws?.close();
+    }
+    return new Promise<void>((resolve) => {
+      this.resolveClose = resolve;
+    });
+  }
+  on(type: RelayEvent, cb: any) {
+    this.listeners[type].push(cb);
+    if (type === "connect" && this.ws?.readyState === 1) {
+      cb();
+    }
+  }
+
+  off(type: RelayEvent, cb: any) {
+    const index = this.listeners[type].indexOf(cb);
+    if (index !== -1) this.listeners[type].splice(index, 1);
   }
 }
