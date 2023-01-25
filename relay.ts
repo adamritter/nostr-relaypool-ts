@@ -79,6 +79,17 @@ class RelayC {
     };
   } = {};
   connected: boolean = false;
+  incomingMessageQueue: string[] = [];
+  handleNextInterval: any;
+
+  #handleNext() {
+    if (this.incomingMessageQueue.length === 0) {
+      clearInterval(this.handleNextInterval);
+      this.handleNextInterval = null;
+      return;
+    }
+    this.#handleMessage({data: this.incomingMessageQueue.shift()});
+  }
 
   async trySend(params: [string, ...any]) {
     const msg = JSON.stringify(params);
@@ -91,13 +102,20 @@ class RelayC {
   }
   resolveClose: (() => void) | undefined = undefined;
 
-  async onclose() {
+  async #onclose() {
     this.connected = false;
     this.listeners.disconnect.forEach((cb) => cb());
     this.resolveClose && this.resolveClose();
   }
 
-  async onmessage(e: any) {
+  async #onmessage(e: any) {
+    this.incomingMessageQueue.push(e.data);
+    if (!this.handleNextInterval) {
+      this.handleNextInterval = setInterval(() => this.#handleNext(), 0);
+    }
+  }
+
+  async #handleMessage(e: any) {
     const this2 = this;
     let data;
     let json: string = e.data.toString();
@@ -158,7 +176,7 @@ class RelayC {
       }
     }
   }
-  onopen(opened: () => void) {
+  #onopen(opened: () => void) {
     const this2 = this;
     if (this2.resolveClose) {
       this2.resolveClose();
@@ -183,13 +201,13 @@ class RelayC {
       const ws = new WebSocket(this.url);
       this.ws = ws;
 
-      ws.onopen = this.onopen.bind(this, resolve);
+      ws.onopen = this.#onopen.bind(this, resolve);
       ws.onerror = () => {
         this.listeners.error.forEach((cb) => cb());
         reject();
       };
-      ws.onclose = this.onclose.bind(this);
-      ws.onmessage = this.onmessage.bind(this);
+      ws.onclose = this.#onclose.bind(this);
+      ws.onmessage = this.#onmessage.bind(this);
     });
   }
 
