@@ -7,9 +7,11 @@ export class InMemoryRelayServer {
   events: (Event & {id: string})[] = [];
   wss: WebSocketServer;
   subs: Map<string, Filter[]> = new Map();
+  connections: Set<WebSocket> = new Set();
   constructor(port = 8081, host = "localhost") {
     this.wss = new WebSocketServer({port, host});
     this.wss.on("connection", (ws) => {
+      this.connections.add(ws);
       // console.log('connected')
       ws.on("message", (message) => {
         const data = JSON.parse(message.toString());
@@ -48,5 +50,10 @@ export class InMemoryRelayServer {
   clear() {
     this.events = [];
     this.subs = new Map();
+  }
+  disconnectAll() {
+    for (const ws of this.connections) {
+      ws.close();
+    }
   }
 }

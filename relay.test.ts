@@ -11,6 +11,7 @@ import {
 
 import {relayInit} from "./relay";
 import {InMemoryRelayServer} from "./in-memory-relay-server";
+import WebSocket from "ws";
 
 let relay: Relay;
 const _relayServer: InMemoryRelayServer = new InMemoryRelayServer(8089);
@@ -136,7 +137,7 @@ test("listening (twice) and publishing", async () => {
   // @ts-ignore
   event.id = getEventHash(event);
   // @ts-ignore
-  event.sig = await signEvent(event, sk);
+  event.sig = signEvent(event, sk);
 
   relay.publish(event);
   return expect(
@@ -165,7 +166,7 @@ test("two subscriptions", async () => {
   // @ts-ignore
   event.id = getEventHash(event);
   // @ts-ignore
-  event.sig = await signEvent(event, sk);
+  event.sig = signEvent(event, sk);
 
   await expect(
     new Promise((resolve) => {
@@ -204,4 +205,14 @@ test("two subscriptions", async () => {
       relay.publish(event);
     })
   ).resolves.toEqual(true);
+});
+
+test.skip("autoreconnect", async () => {
+  expect(relay.status).toBe(WebSocket.CONNECTING);
+  await publishAndGetEvent();
+  expect(relay.status).toBe(WebSocket.OPEN);
+  _relayServer.disconnectAll();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  expect(relay.status).toBe(WebSocket.CLOSING);
+  // await publishAndGetEvent();
 });

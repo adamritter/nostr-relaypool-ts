@@ -116,7 +116,6 @@ class RelayC {
   }
 
   async #handleMessage(e: any) {
-    const this2 = this;
     let data;
     let json: string = e.data.toString();
     if (!json) {
@@ -125,7 +124,7 @@ class RelayC {
     let event =
       this.alreadyHaveEvent && this.alreadyHaveEvent(getHex64(json, "id"));
     if (event) {
-      return this2.subListeners[getSubName(json)].event.forEach((cb) =>
+      return this.subListeners[getSubName(json)].event.forEach((cb) =>
         // @ts-ignore
         cb(event)
       );
@@ -145,18 +144,18 @@ class RelayC {
           const event = data[2];
           if (
             validateEvent(event) &&
-            this2.openSubs[id] &&
-            (this2.openSubs[id].skipVerification || verifySignature(event)) &&
-            matchFilters(this2.openSubs[id].filters, event)
+            this.openSubs[id] &&
+            (this.openSubs[id].skipVerification || verifySignature(event)) &&
+            matchFilters(this.openSubs[id].filters, event)
           ) {
-            this2.openSubs[id];
-            (this2.subListeners[id]?.event || []).forEach((cb) => cb(event));
+            this.openSubs[id];
+            (this.subListeners[id]?.event || []).forEach((cb) => cb(event));
           }
           return;
         case "EOSE": {
           if (data.length !== 2) return; // ignore empty or malformed EOSE
           const id = data[1];
-          (this2.subListeners[id]?.eose || []).forEach((cb) => cb());
+          (this.subListeners[id]?.eose || []).forEach((cb) => cb());
           return;
         }
         case "OK": {
@@ -164,35 +163,34 @@ class RelayC {
           const id: string = data[1];
           const ok: boolean = data[2];
           const reason: string = data[3] || "";
-          if (ok) this2.pubListeners[id]?.ok.forEach((cb) => cb());
-          else this2.pubListeners[id]?.failed.forEach((cb) => cb(reason));
+          if (ok) this.pubListeners[id]?.ok.forEach((cb) => cb());
+          else this.pubListeners[id]?.failed.forEach((cb) => cb(reason));
           return;
         }
         case "NOTICE":
           if (data.length !== 2) return; // ignore empty or malformed NOTICE
           const notice = data[1];
-          this2.listeners.notice.forEach((cb) => cb(notice));
+          this.listeners.notice.forEach((cb) => cb(notice));
           return;
       }
     }
   }
   #onopen(opened: () => void) {
-    const this2 = this;
-    if (this2.resolveClose) {
-      this2.resolveClose();
+    if (this.resolveClose) {
+      this.resolveClose();
       return;
     }
-    this2.connected = true;
+    this.connected = true;
     // TODO: Send ephereal messages after subscription, permament before
-    for (const subid in this2.openSubs) {
-      this2.trySend(["REQ", subid, ...this2.openSubs[subid].filters]);
+    for (const subid in this.openSubs) {
+      this.trySend(["REQ", subid, ...this.openSubs[subid].filters]);
     }
-    for (const msg of this2.sendOnConnect) {
+    for (const msg of this.sendOnConnect) {
       this.ws?.send(msg);
     }
-    this2.sendOnConnect = [];
+    this.sendOnConnect = [];
 
-    this2.listeners.connect.forEach((cb) => cb());
+    this.listeners.connect.forEach((cb) => cb());
     opened();
   }
 
