@@ -230,4 +230,12 @@ export class RelayPool {
       relay.on("disconnect", (msg: string) => cb(url, msg))
     );
   }
+  getRelayStatuses(): [url: string, staus: number][] {
+    return Array.from(this.relayByUrl.entries())
+      .map(
+        ([url, relay]: [string, Relay]) =>
+          [url, relay.status] as [string, number]
+      )
+      .sort();
+  }
 }

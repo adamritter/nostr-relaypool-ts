@@ -531,3 +531,7 @@ test("kind0", async () => {
 
   return expect(thirdOnEvent).resolves.toEqual(true);
 });
+
+test("getRelayStatuses", async () => {
+  expect(relaypool.getRelayStatuses()).toEqual([[relayurls[0], 0]]);
+});
