@@ -26,6 +26,7 @@ export class RelayPool {
   timer?: ReturnType<typeof setTimeout>;
   externalGetEventById?: (id: string) => NostrToolsEventWithId | undefined;
   dontLogSubscriptions?: boolean = false;
+  dontAutoReconnect?: boolean = false;
 
   constructor(
     relays?: string[],
@@ -33,10 +34,12 @@ export class RelayPool {
       noCache?: boolean;
       externalGetEventById?: (id: string) => NostrToolsEventWithId | undefined;
       dontLogSubscriptions?: boolean;
+      dontAutoReconnect?: boolean;
     } = {}
   ) {
     this.externalGetEventById = options.externalGetEventById;
     this.dontLogSubscriptions = options.dontLogSubscriptions;
+    this.dontAutoReconnect = options.dontAutoReconnect;
     if (!options.noCache) {
       this.eventCache = new EventCache();
     }
@@ -58,7 +61,8 @@ export class RelayPool {
         ? this.externalGetEventById
         : this.eventCache
         ? (id) => this.eventCache?.getEventById(id)
-        : undefined
+        : undefined,
+      this.dontAutoReconnect
     );
     this.relayByUrl.set(relay, relayInstance);
     relayInstance.connect().then(

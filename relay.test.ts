@@ -58,6 +58,7 @@ async function publishAndGetEvent(): Promise<Event & {id: string}> {
   event.id = eventId;
   // @ts-ignore
   event.sig = signEvent(event, sk);
+  // console.log("publishing event", event);
   relay.publish(event);
   return new Promise((resolve) =>
     relay
@@ -207,12 +208,12 @@ test("two subscriptions", async () => {
   ).resolves.toEqual(true);
 });
 
-test.skip("autoreconnect", async () => {
+test("autoreconnect", async () => {
   expect(relay.status).toBe(WebSocket.CONNECTING);
   await publishAndGetEvent();
   expect(relay.status).toBe(WebSocket.OPEN);
   _relayServer.disconnectAll();
   await new Promise((resolve) => setTimeout(resolve, 0));
-  expect(relay.status).toBe(WebSocket.CLOSING);
-  // await publishAndGetEvent();
+  expect(relay.status).toBeGreaterThanOrEqual(WebSocket.CLOSING);
+  await publishAndGetEvent();
 });

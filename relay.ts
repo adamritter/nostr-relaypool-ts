@@ -37,23 +37,28 @@ type SubscriptionOptions = {
 };
 export function relayInit(
   url: string,
-  alreadyHaveEvent?: (id: string) => (Event & {id: string}) | undefined
+  alreadyHaveEvent?: (id: string) => (Event & {id: string}) | undefined,
+  dontAutoReconnect?: boolean
 ): Relay {
-  return new RelayC(url, alreadyHaveEvent).relayInit();
+  return new RelayC(url, alreadyHaveEvent, dontAutoReconnect).relayInit();
 }
 class RelayC {
   url: string;
   alreadyHaveEvent?: (id: string) => (Event & {id: string}) | undefined;
   constructor(
     url: string,
-    alreadyHaveEvent?: (id: string) => (Event & {id: string}) | undefined
+    alreadyHaveEvent?: (id: string) => (Event & {id: string}) | undefined,
+    dontAutoReconnect?: boolean
   ) {
     this.url = url;
     this.alreadyHaveEvent = alreadyHaveEvent;
+    this.dontAutoReconnect = dontAutoReconnect;
   }
+  dontAutoReconnect?: boolean;
   ws: WebSocket | undefined;
   sendOnConnect: string[] = [];
   openSubs: {[id: string]: {filters: Filter[]} & SubscriptionOptions} = {};
+  closedByClient: boolean = false;
   listeners: {
     connect: Array<() => void>;
     disconnect: Array<() => void>;
@@ -78,7 +83,6 @@ class RelayC {
       failed: Array<(reason: string) => void>;
     };
   } = {};
-  connected: boolean = false;
   incomingMessageQueue: string[] = [];
   handleNextInterval: any;
 
@@ -103,9 +107,21 @@ class RelayC {
   resolveClose: (() => void) | undefined = undefined;
 
   async #onclose() {
-    this.connected = false;
-    this.listeners.disconnect.forEach((cb) => cb());
-    this.resolveClose && this.resolveClose();
+    if (this.closedByClient) {
+      this.listeners.disconnect.forEach((cb) => cb());
+      this.resolveClose && this.resolveClose();
+    } else {
+      if (!this.dontAutoReconnect) {
+        this.#reconnect();
+      }
+    }
+  }
+  reconnectTimeout: number = 0;
+  #reconnect() {
+    setTimeout(() => {
+      this.reconnectTimeout = Math.max(2000, this.reconnectTimeout * 2);
+      this.connect();
+    }, this.reconnectTimeout);
   }
 
   async #onmessage(e: any) {
@@ -180,7 +196,7 @@ class RelayC {
       this.resolveClose();
       return;
     }
-    this.connected = true;
+    this.reconnectTimeout = 0;
     // TODO: Send ephereal messages after subscription, permament before
     for (const subid in this.openSubs) {
       this.trySend(["REQ", subid, ...this.openSubs[subid].filters]);
@@ -234,7 +250,11 @@ class RelayC {
   get status() {
     return this.ws?.readyState ?? 3;
   }
+  get connected() {
+    return this.ws?.readyState === 1;
+  }
   close(): Promise<void> {
+    this.closedByClient = true;
     if (this.connected) {
       this.ws?.close();
     }
