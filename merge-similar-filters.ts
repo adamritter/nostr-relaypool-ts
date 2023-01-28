@@ -57,5 +57,6 @@ export function mergeSimilarAndRemoveEmptyFilters(filters: Filter[]): Filter[] {
       r.push(filter);
     }
   }
+  console.log("mergeSimilarAndRemoveEmptyFilters", filters, r);
   return r;
 }

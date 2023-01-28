@@ -120,6 +120,23 @@ export class RelayPool {
     return sub;
   }
 
+  #mergeAndRemoveEmptyFiltersByRelay(
+    filtersByRelay: Map<string, Filter[]>
+  ): Map<string, Filter[]> {
+    const mergedAndRemovedEmptyFiltersByRelay = new Map();
+    for (const [relay, filters] of filtersByRelay) {
+      const mergedAndRemovedEmptyFilters =
+        mergeSimilarAndRemoveEmptyFilters(filters);
+      if (mergedAndRemovedEmptyFilters.length > 0) {
+        mergedAndRemovedEmptyFiltersByRelay.set(
+          relay,
+          mergedAndRemovedEmptyFilters
+        );
+      }
+    }
+    return mergedAndRemovedEmptyFiltersByRelay;
+  }
+
   #subscribeRelays(
     filtersByRelay: Map<string, Filter[]>,
     onEvent: OnEvent,
@@ -128,6 +145,8 @@ export class RelayPool {
     if (filtersByRelay.size === 0) {
       return () => {};
     }
+    // Merging here is done to make logging more readable.
+    filtersByRelay = this.#mergeAndRemoveEmptyFiltersByRelay(filtersByRelay);
     if (!this.dontLogSubscriptions) {
       console.log("RelayPool subscribing to relays", filtersByRelay);
     }
