@@ -71,10 +71,12 @@ class RelayC {
     notice: [],
   };
   subListeners: {
-    [subid: string]: {
-      event: Array<(event: Event) => void>;
-      eose: Array<() => void>;
-    };
+    [subid: string]:
+      | {
+          event: Array<(event: Event) => void>;
+          eose: Array<() => void>;
+        }
+      | undefined;
   } = {};
   pubListeners: {
     [eventid: string]: {
@@ -140,7 +142,13 @@ class RelayC {
     let event =
       this.alreadyHaveEvent && this.alreadyHaveEvent(getHex64(json, "id"));
     if (event) {
-      return this.subListeners[getSubName(json)].event.forEach((cb) =>
+      const listener = this.subListeners[getSubName(json)];
+
+      if (!listener) {
+        return;
+      }
+
+      return listener.event.forEach((cb) =>
         // @ts-ignore
         cb(event)
       );
@@ -364,10 +372,13 @@ class RelayC {
           event: [],
           eose: [],
         };
-        this2.subListeners[subid][type].push(cb);
+        this2.subListeners[subid]![type].push(cb);
       },
       off: (type: "event" | "eose", cb: any): void => {
         const listeners = this2.subListeners[subid];
+
+        if (!listeners) return;
+
         const idx = listeners[type].indexOf(cb);
         if (idx >= 0) listeners[type].splice(idx, 1);
       },
