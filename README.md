@@ -138,7 +138,8 @@ options:
                           relayURL: string | undefined) => void,
                       maxDelayms?: number,
                       onEose?: (events, relayURL) => void,
-                      options: {allowDuplicateEvents?: boolean, allowOlderEvents?: boolean} = {}
+                      options: {allowDuplicateEvents?: boolean, allowOlderEvents?: boolean,
+                          logAllEvents?: boolean} = {}
               ) : () => void
 ```
 
@@ -200,6 +201,9 @@ If it's used, the returned function doesn't do anything. It can't be used togeth
 
   - allowOlderEvents: if a subscription emitted an event with kind 0 or 3 (metadata / contacts),
     it doesn't allow emitting older events by default. This option overrides that filter.
+
+  - logAllEvents: Log all events that are sent back to separate subscriptions. It can be a lot of events,
+    so this option is only advised for application development, especially debugging.
 
 ```typescript
  RelayPool::sendSubscriptions(onEose?: (events, relayURL) => void) : () => void

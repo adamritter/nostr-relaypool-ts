@@ -193,7 +193,11 @@ export class RelayPool {
     onEvent: OnEvent,
     maxDelayms?: number,
     onEose?: OnEose,
-    options: {allowDuplicateEvents?: boolean; allowOlderEvents?: boolean} = {}
+    options: {
+      allowDuplicateEvents?: boolean;
+      allowOlderEvents?: boolean;
+      logAllEvents?: boolean;
+    } = {}
   ): () => void {
     if (maxDelayms && onEose) {
       throw new Error("maxDelayms and onEose cannot be used together");

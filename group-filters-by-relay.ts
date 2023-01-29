@@ -15,7 +15,11 @@ export function groupFiltersByRelayAndEmitCacheHits(
   filters: (Filter & {relay?: string; noCache?: boolean})[],
   relays: string[],
   onEvent: OnEvent,
-  options: {allowDuplicateEvents?: boolean; allowOlderEvents?: boolean} = {},
+  options: {
+    allowDuplicateEvents?: boolean;
+    allowOlderEvents?: boolean;
+    logAllEvents?: boolean;
+  } = {},
   eventCache?: EventCache
 ): [OnEvent, Map<string, Filter[]>] {
   let events: (Event & {id: string})[] = [];
@@ -24,6 +28,12 @@ export function groupFiltersByRelayAndEmitCacheHits(
       eventCache.getCachedEventsWithUpdatedFilters(filters, relays);
     filters = cachedEventsWithUpdatedFilters.filters;
     events = cachedEventsWithUpdatedFilters.events;
+  }
+  if (options.logAllEvents) {
+    onEvent = (event, isEose, url) => {
+      console.log("filters", filters, "onEvent", event, isEose, url);
+      onEvent(event, isEose, url);
+    };
   }
   if (!options.allowDuplicateEvents) {
     onEvent = doNotEmitDuplicateEvents(onEvent);
