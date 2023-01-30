@@ -2,11 +2,11 @@ import {Filter, Kind} from "nostr-tools";
 import {Event} from "./event";
 
 export class EventCache {
-  eventsById: Map<string, Event & {id: string}> = new Map();
-  metadataByPubKey: Map<string, Event & {id: string}> = new Map();
-  contactsByPubKey: Map<string, Event & {id: string}> = new Map();
+  eventsById: Map<string, Event> = new Map();
+  metadataByPubKey: Map<string, Event> = new Map();
+  contactsByPubKey: Map<string, Event> = new Map();
 
-  addEvent(event: Event & {id: string}) {
+  addEvent(event: Event) {
     this.eventsById.set(event.id, event);
     if (event.kind === Kind.Metadata) {
       this.metadataByPubKey.set(event.pubkey, event);
@@ -16,7 +16,7 @@ export class EventCache {
     }
   }
 
-  getEventById(id: string): (Event & {id: string}) | undefined {
+  getEventById(id: string): Event | undefined {
     return this.eventsById.get(id);
   }
 
@@ -29,9 +29,7 @@ export class EventCache {
       relay?: string;
       noCache?: boolean;
     }
-  ):
-    | {filter: Filter & {relay?: string}; events: Set<Event & {id: string}>}
-    | undefined {
+  ): {filter: Filter & {relay?: string}; events: Set<Event>} | undefined {
     if (
       filter.noCache ||
       !filter.authors ||
@@ -43,7 +41,7 @@ export class EventCache {
       return undefined;
     }
     const authors: string[] = [];
-    const events = new Set<Event & {id: string}>();
+    const events = new Set<Event>();
     for (const author of filter.authors) {
       let contactEvent;
       if (filter.kinds.includes(Kind.Contacts)) {
@@ -73,14 +71,12 @@ export class EventCache {
 
   #getCachedEventsByIdWithUpdatedFilter(
     filter: Filter & {relay?: string; noCache?: boolean}
-  ):
-    | {filter: Filter & {relay?: string}; events: Set<Event & {id: string}>}
-    | undefined {
+  ): {filter: Filter & {relay?: string}; events: Set<Event>} | undefined {
     if (!filter.ids) {
       return undefined;
     }
 
-    const events = new Set<Event & {id: string}>();
+    const events = new Set<Event>();
     const ids: string[] = [];
     for (const id of filter.ids) {
       const event = this.getEventById(id);
@@ -98,9 +94,9 @@ export class EventCache {
     relays: string[]
   ): {
     filters: (Filter & {relay?: string})[];
-    events: (Event & {id: string})[];
+    events: Event[];
   } {
-    const events: Set<Event & {id: string}> = new Set();
+    const events: Set<Event> = new Set();
     const new_filters: (Filter & {relay?: string})[] = [];
     for (const filter of filters) {
       const new_data = this.#getCachedEventsByIdWithUpdatedFilter(filter) ||

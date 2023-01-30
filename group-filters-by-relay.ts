@@ -22,7 +22,7 @@ export function groupFiltersByRelayAndEmitCacheHits(
   } = {},
   eventCache?: EventCache
 ): [OnEvent, Map<string, Filter[]>] {
-  let events: (Event & {id: string})[] = [];
+  let events: Event[] = [];
   if (eventCache) {
     const cachedEventsWithUpdatedFilters =
       eventCache.getCachedEventsWithUpdatedFilters(filters, relays);
