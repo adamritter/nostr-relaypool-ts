@@ -535,3 +535,148 @@ test("kind0", async () => {
 test("getRelayStatuses", async () => {
   expect(relaypool.getRelayStatuses()).toEqual([[relayurls[0], 0]]);
 });
+
+test("nounsub", async () => {
+  let event = createSignedEvent(0);
+  relaypool.publish(event, relayurls);
+
+  let p2 = new Promise((resolve2) => {
+    new Promise((resolve1) => {
+      let counter = 0;
+      let _sub1 = relaypool.subscribe(
+        [
+          {
+            kinds: [0],
+          },
+        ],
+        relayurls,
+        (event) => {
+          expect(event).toHaveProperty("kind", 0);
+          counter++;
+          if (counter === 1) {
+            let event2 = createSignedEvent(0);
+            relaypool.publish(event2, relayurls);
+          } else if (counter === 2) {
+            resolve2(true);
+          }
+        }
+      );
+    });
+  });
+  await expect(p2).resolves.toEqual(true);
+});
+
+test("unsub", async () => {
+  let event = createSignedEvent(0);
+  relaypool.publish(event, relayurls);
+
+  let p2 = new Promise((resolve2) => {
+    new Promise((resolve1) => {
+      let counter = 0;
+      let sub1 = relaypool.subscribe(
+        [
+          {
+            kinds: [0],
+          },
+        ],
+        relayurls,
+        (event) => {
+          expect(event).toHaveProperty("kind", 0);
+          counter++;
+          if (counter === 1) {
+            sub1();
+            let event2 = createSignedEvent(0);
+            relaypool.publish(event2, relayurls);
+          } else if (counter === 2) {
+            resolve2(true);
+          }
+        }
+      );
+    });
+  });
+  await expect(
+    Promise.race([
+      p2,
+      new Promise((resolve) => {
+        setTimeout(() => resolve(false), 50);
+      }),
+    ])
+  ).resolves.toEqual(false);
+});
+
+test("delay_nounsub", async () => {
+  let event = createSignedEvent(0);
+  relaypool.publish(event, relayurls);
+
+  let p2 = new Promise((resolve2) => {
+    new Promise((resolve1) => {
+      let counter = 0;
+      let _sub1 = relaypool.subscribe(
+        [
+          {
+            kinds: [0],
+          },
+        ],
+        relayurls,
+        (event) => {
+          expect(event).toHaveProperty("kind", 0);
+          counter++;
+          if (counter === 1) {
+            let event2 = createSignedEvent(0);
+            relaypool.publish(event2, relayurls);
+          } else if (counter === 2) {
+            resolve2(true);
+          }
+        },
+        0
+      );
+    });
+  });
+  await expect(
+    Promise.race([
+      p2,
+      new Promise((resolve) => {
+        setTimeout(() => resolve(false), 50);
+      }),
+    ])
+  ).resolves.toEqual(true);
+});
+
+test("delay_unsub", async () => {
+  let event = createSignedEvent(0);
+  relaypool.publish(event, relayurls);
+
+  let p2 = new Promise((resolve2) => {
+    new Promise((resolve1) => {
+      let counter = 0;
+      let sub1 = relaypool.subscribe(
+        [
+          {
+            kinds: [0],
+          },
+        ],
+        relayurls,
+        (event) => {
+          expect(event).toHaveProperty("kind", 0);
+          counter++;
+          if (counter === 1) {
+            sub1();
+            let event2 = createSignedEvent(0);
+            relaypool.publish(event2, relayurls);
+          } else if (counter === 2) {
+            resolve2(true);
+          }
+        },
+        0
+      );
+    });
+  });
+  await expect(
+    Promise.race([
+      p2,
+      new Promise((resolve) => {
+        setTimeout(() => resolve(false), 50);
+      }),
+    ])
+  ).resolves.toEqual(false);
+});

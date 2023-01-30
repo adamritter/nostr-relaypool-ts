@@ -22,7 +22,11 @@ export class RelayPool {
   noticecbs: Array<(url: string, msg: string) => void> = [];
   eventCache?: EventCache;
   minMaxDelayms: number = Infinity;
-  filtersToSubscribe: [OnEvent, Map<string, Filter[]>][] = [];
+  filtersToSubscribe: [
+    OnEvent,
+    Map<string, Filter[]>,
+    {unsubcb?: () => void}
+  ][] = [];
   timer?: ReturnType<typeof setTimeout>;
   externalGetEventById?: (id: string) => NostrToolsEventWithId | undefined;
   dontLogSubscriptions?: boolean = false;
@@ -165,11 +169,19 @@ export class RelayPool {
     this.timer = undefined;
     this.minMaxDelayms = Infinity;
 
-    const [onEvent, filtersByRelay]: [OnEvent, Map<string, Filter[]>] =
-      batchFiltersByRelay(this.filtersToSubscribe);
+    const [onEvent, filtersByRelay, unsub]: [
+      OnEvent,
+      Map<string, Filter[]>,
+      {unsubcb?: () => void}
+    ] = batchFiltersByRelay(this.filtersToSubscribe);
     this.filtersToSubscribe = [];
 
-    return this.#subscribeRelays(filtersByRelay, onEvent, onEose);
+    let allUnsub = this.#subscribeRelays(filtersByRelay, onEvent, onEose);
+    unsub.unsubcb = () => {
+      allUnsub();
+      delete unsub.unsubcb;
+    };
+    return allUnsub;
   }
 
   #resetTimer(maxDelayms: number) {
@@ -199,7 +211,7 @@ export class RelayPool {
       logAllEvents?: boolean;
     } = {}
   ): () => void {
-    if (maxDelayms && onEose) {
+    if (maxDelayms !== undefined && onEose) {
       throw new Error("maxDelayms and onEose cannot be used together");
     }
     const [dedupedOnEvent, filtersByRelay] =
@@ -210,10 +222,14 @@ export class RelayPool {
         options,
         this.eventCache
       );
-    this.filtersToSubscribe.push([dedupedOnEvent, filtersByRelay]);
-    if (maxDelayms) {
+    let unsub: {unsubcb?: () => void} = {unsubcb: () => {}};
+    this.filtersToSubscribe.push([dedupedOnEvent, filtersByRelay, unsub]);
+    if (maxDelayms !== undefined) {
       this.#resetTimer(maxDelayms);
-      return () => {};
+      return () => {
+        unsub.unsubcb?.();
+        delete unsub.unsubcb;
+      };
     }
     return this.sendSubscriptions(onEose);
   }

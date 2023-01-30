@@ -205,6 +205,11 @@ If it's used, the returned function doesn't do anything. It can't be used togeth
   - logAllEvents: Log all events that are sent back to separate subscriptions. It can be a lot of events,
     so this option is only advised for application development, especially debugging.
 
+Return value:
+
+Returns a function that stops sending more data with the onEvent callback. When all virtual subscriptions are unsubscribed,
+an unsubscribe request is sent to all relays.
+
 ```typescript
  RelayPool::sendSubscriptions(onEose?: (events, relayURL) => void) : () => void
 ```

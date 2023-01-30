@@ -90,11 +90,16 @@ function withoutRelay(filter: Filter & {relay?: string}): Filter {
 }
 
 export function batchFiltersByRelay(
-  subscribedFilters: [OnEvent, Map<string, Filter[]>][]
-): [OnEvent, Map<string, Filter[]>] {
+  subscribedFilters: [OnEvent, Map<string, Filter[]>, {unsubcb?: () => void}][]
+): [OnEvent, Map<string, Filter[]>, {unsubcb?: () => void}] {
   const filtersByRelay = new Map<string, Filter[]>();
   const onEvents: OnEvent[] = [];
-  for (const [onEvent, filtersByRelayBySub] of subscribedFilters) {
+  let counter = 0;
+  let allUnsub = {unsubcb: () => {}};
+  for (const [onEvent, filtersByRelayBySub, unsub] of subscribedFilters) {
+    if (!unsub.unsubcb) {
+      continue;
+    }
     for (const [relay, filters] of filtersByRelayBySub) {
       const filtersByRelayFilters = filtersByRelay.get(relay);
       if (filtersByRelayFilters) {
@@ -103,12 +108,25 @@ export function batchFiltersByRelay(
         filtersByRelay.set(relay, filters);
       }
     }
-    onEvents.push(onEvent);
+    let onEventWithUnsub: OnEvent = (event, afterEose, url) => {
+      if (unsub.unsubcb) {
+        onEvent(event, afterEose, url);
+      }
+    };
+    onEvents.push(onEventWithUnsub);
+    counter++;
+    unsub.unsubcb = () => {
+      unsub.unsubcb = undefined;
+      counter--;
+      if (counter === 0) {
+        allUnsub.unsubcb();
+      }
+    };
   }
   const onEvent: OnEvent = (event, afterEose, url) => {
     for (const onEvent of onEvents) {
       onEvent(event, afterEose, url);
     }
   };
-  return [onEvent, filtersByRelay];
+  return [onEvent, filtersByRelay, allUnsub];
 }
