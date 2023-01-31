@@ -5,6 +5,43 @@ export class EventCache {
   eventsById: Map<string, Event> = new Map();
   metadataByPubKey: Map<string, Event> = new Map();
   contactsByPubKey: Map<string, Event> = new Map();
+  authorsKindsByPubKey: Map<string, Map<number, Event[]>> = new Map();
+  eventsByTags: Map<string, Event[]> = new Map();
+
+  #addEventToAuthorKindsByPubKey(event: Event) {
+    const kindsByPubKey = this.authorsKindsByPubKey.get(event.pubkey);
+    if (!kindsByPubKey) {
+      this.authorsKindsByPubKey.set(
+        event.pubkey,
+        new Map([[event.kind, [event]]])
+      );
+    } else {
+      const events = kindsByPubKey.get(event.kind);
+      if (!events) {
+        kindsByPubKey.set(event.kind, [event]);
+      } else {
+        if (event.kind === Kind.Metadata || event.kind === Kind.Contacts) {
+          if (event.created_at > events[0].created_at) {
+            events[0] = event;
+          }
+        } else {
+          events.push(event);
+        }
+      }
+    }
+  }
+
+  #addEventToEventsByTags(event: Event) {
+    for (const tag of event.tags) {
+      let tag2 = tag[0] + ": " + tag[1];
+      const events = this.eventsByTags.get(tag2);
+      if (events) {
+        events.push(event);
+      } else {
+        this.eventsByTags.set(tag2, [event]);
+      }
+    }
+  }
 
   addEvent(event: Event) {
     this.eventsById.set(event.id, event);
@@ -14,6 +51,8 @@ export class EventCache {
     if (event.kind === Kind.Contacts) {
       this.contactsByPubKey.set(event.pubkey, event);
     }
+    this.#addEventToAuthorKindsByPubKey(event);
+    this.#addEventToEventsByTags(event);
   }
 
   getEventById(id: string): Event | undefined {
@@ -69,6 +108,43 @@ export class EventCache {
     return {filter: {...filter, authors}, events};
   }
 
+  #getCachedEventsByPubKeyWithUpdatedFilter2(
+    filter: Filter & {
+      relay?: string;
+      noCache?: boolean;
+    }
+  ): {filter: Filter & {relay?: string}; events: Set<Event>} | undefined {
+    if (filter.noCache || !filter.authors) {
+      return undefined;
+    }
+    const events = new Set<Event>();
+    for (const author of filter.authors) {
+      if (filter.kinds) {
+        const kindsByPubKey = this.authorsKindsByPubKey.get(author);
+        if (kindsByPubKey) {
+          for (const kind of filter.kinds) {
+            const events2 = kindsByPubKey.get(kind);
+            if (events2) {
+              for (const event of events2) {
+                events.add(event);
+              }
+            }
+          }
+        }
+      } else {
+        const kindsByPubKey = this.authorsKindsByPubKey.get(author);
+        if (kindsByPubKey) {
+          for (const events2 of kindsByPubKey.values()) {
+            for (const event3 of events2) {
+              events.add(event3);
+            }
+          }
+        }
+      }
+    }
+    return {filter, events};
+  }
+
   #getCachedEventsByIdWithUpdatedFilter(
     filter: Filter & {relay?: string; noCache?: boolean}
   ): {filter: Filter & {relay?: string}; events: Set<Event>} | undefined {
@@ -100,7 +176,8 @@ export class EventCache {
     const new_filters: (Filter & {relay?: string})[] = [];
     for (const filter of filters) {
       const new_data = this.#getCachedEventsByIdWithUpdatedFilter(filter) ||
-        this.#getCachedEventsByPubKeyWithUpdatedFilter(filter) || {
+        // this.#getCachedEventsByPubKeyWithUpdatedFilter(filter) ||
+        this.#getCachedEventsByPubKeyWithUpdatedFilter2(filter) || {
           filter,
           events: [],
         };

@@ -411,12 +411,10 @@ test("cache authors", async () => {
           expect(event).toHaveProperty("pubkey", pk);
           expect(event).toHaveProperty("kind", 27572);
           expect(event).toHaveProperty("content", "nostr-tools test suite");
-          expect(url).toEqual(relayurls2[0]);
+          expect(url).toEqual(undefined);
           resolve(true);
         }
       );
-      // @ts-ignore
-      relaypool.publish(event, relayurls2);
     })
   ).resolves.toEqual(true);
 });
