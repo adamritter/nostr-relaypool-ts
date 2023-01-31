@@ -121,7 +121,11 @@ class RelayC {
   reconnectTimeout: number = 0;
   #reconnect() {
     setTimeout(() => {
-      this.reconnectTimeout = Math.max(2000, this.reconnectTimeout * 2);
+      this.reconnectTimeout = Math.max(2000, this.reconnectTimeout * 3);
+      console.log(
+        this.url,
+        "reconnecting after " + this.reconnectTimeout / 1000 + "s"
+      );
       this.connect();
     }, this.reconnectTimeout);
   }
@@ -204,7 +208,8 @@ class RelayC {
       this.resolveClose();
       return;
     }
-    this.reconnectTimeout = 0;
+    // console.log("#onopen setting reconnectTimeout to 0");
+    // this.reconnectTimeout = 0;
     // TODO: Send ephereal messages after subscription, permament before
     for (const subid in this.openSubs) {
       this.trySend(["REQ", subid, ...this.openSubs[subid].filters]);
@@ -224,9 +229,9 @@ class RelayC {
       this.ws = ws;
 
       ws.onopen = this.#onopen.bind(this, resolve);
-      ws.onerror = () => {
+      ws.onerror = (e) => {
         this.listeners.error.forEach((cb) => cb());
-        reject();
+        reject(e);
       };
       ws.onclose = this.#onclose.bind(this);
       ws.onmessage = this.#onmessage.bind(this);
@@ -235,7 +240,11 @@ class RelayC {
 
   async connect(): Promise<void> {
     if (this.ws?.readyState && this.ws.readyState === 1) return; // ws already open
-    await this.connectRelay();
+    try {
+      await this.connectRelay();
+    } catch (err) {
+      console.log("connectRelay ", this.url, " error ", err);
+    }
   }
 
   relayInit(): Relay {
