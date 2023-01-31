@@ -57,6 +57,6 @@
     "build": "node build.js",
     "pretest": "node build.js",
     "test": "NODE_OPTIONS=--experimental-vm-modules npx jest",
-    "publish": "npm run build && npm run test && npm publish"
+    "publish": "npm i && npm run build && npm run test && npm publish"
   }
 }
