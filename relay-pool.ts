@@ -71,7 +71,7 @@ export class RelayPool {
     this.relayByUrl.set(relay, relayInstance);
     relayInstance.connect().then(
       (onfulfilled) => {
-        relayInstance?.on("notice", (relay: string, msg: string) => {
+        relayInstance?.on("notice", (msg: string) => {
           this.noticecbs.forEach((cb) => cb(relay, msg));
         });
       },
