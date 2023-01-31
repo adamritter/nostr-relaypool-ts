@@ -22,8 +22,8 @@ let _relayServer: InMemoryRelayServer;
 let _relayServer2: InMemoryRelayServer;
 
 beforeAll(() => {
-  const _relayServer: InMemoryRelayServer = new InMemoryRelayServer(8083);
-  const _relayServer2: InMemoryRelayServer = new InMemoryRelayServer(8084);
+  _relayServer = new InMemoryRelayServer(8083);
+  _relayServer2 = new InMemoryRelayServer(8084);
 });
 
 beforeEach(() => {
