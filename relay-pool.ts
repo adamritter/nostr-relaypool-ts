@@ -91,6 +91,14 @@ export class RelayPool {
     return Promise.all(promises);
   }
 
+  removeRelay(url: string) {
+    const relay = this.relayByUrl.get(url);
+    if (relay) {
+      relay.close();
+      this.relayByUrl.delete(url);
+    }
+  }
+
   #subscribeRelay(
     relay: string,
     filters: Filter[],
