@@ -92,7 +92,17 @@ describe("EventCache", () => {
       kinds: [Kind.Metadata, Kind.Contacts],
       noCache: false,
     };
-    console.log(eventCache.authorsKindsByPubKey.get("pk"));
+    const result = eventCache.getCachedEventsWithUpdatedFilters([filter], []);
+    expect(result).toEqual({events: [event], filters: [filter]});
+  });
+
+  test("tags", () => {
+    event.tags = [["p", "pk2"]];
+    eventCache.addEvent(event);
+    const filter = {
+      "#p": ["pk2"],
+    };
+    console.log("tags", eventCache.eventsByTags);
     const result = eventCache.getCachedEventsWithUpdatedFilters([filter], []);
     expect(result).toEqual({events: [event], filters: [filter]});
   });

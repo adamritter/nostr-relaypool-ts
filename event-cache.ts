@@ -33,7 +33,7 @@ export class EventCache {
 
   #addEventToEventsByTags(event: Event) {
     for (const tag of event.tags) {
-      let tag2 = tag[0] + ": " + tag[1];
+      let tag2 = tag[0] + ":" + tag[1];
       const events = this.eventsByTags.get(tag2);
       if (events) {
         events.push(event);
@@ -145,6 +145,32 @@ export class EventCache {
     return {filter, events};
   }
 
+  #getCachedEventsByTagsWithUpdatedFilter(
+    filter: Filter & {
+      relay?: string;
+      noCache?: boolean;
+    }
+  ): {filter: Filter & {relay?: string}; events: Set<Event>} | undefined {
+    if (filter.noCache) {
+      return undefined;
+    }
+    const events = new Set<Event>();
+    for (const tag in filter) {
+      if (tag[0] !== "#") {
+        continue;
+      }
+      // @ts-ignore
+      let tag2 = tag.slice(1) + ":" + filter[tag][0];
+      const events2 = this.eventsByTags.get(tag2);
+      if (events2) {
+        for (const event of events2) {
+          events.add(event);
+        }
+      }
+    }
+    return {filter, events};
+  }
+
   #getCachedEventsByIdWithUpdatedFilter(
     filter: Filter & {relay?: string; noCache?: boolean}
   ): {filter: Filter & {relay?: string}; events: Set<Event>} | undefined {
@@ -177,7 +203,8 @@ export class EventCache {
     for (const filter of filters) {
       const new_data = this.#getCachedEventsByIdWithUpdatedFilter(filter) ||
         // this.#getCachedEventsByPubKeyWithUpdatedFilter(filter) ||
-        this.#getCachedEventsByPubKeyWithUpdatedFilter2(filter) || {
+        this.#getCachedEventsByPubKeyWithUpdatedFilter2(filter) ||
+        this.#getCachedEventsByTagsWithUpdatedFilter(filter) || {
           filter,
           events: [],
         };

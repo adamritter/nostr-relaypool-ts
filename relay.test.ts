@@ -14,8 +14,11 @@ import {InMemoryRelayServer} from "./in-memory-relay-server";
 import WebSocket from "ws";
 
 let relay: Relay;
-const _relayServer: InMemoryRelayServer = new InMemoryRelayServer(8089);
+let _relayServer: InMemoryRelayServer;
 
+beforeAll(() => {
+  _relayServer = new InMemoryRelayServer(8089);
+});
 beforeEach(() => {
   relay = relayInit("ws://localhost:8089/");
   relay.connect();

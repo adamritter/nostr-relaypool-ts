@@ -18,8 +18,13 @@ let relaypool: RelayPool;
 const relayurls = ["ws://localhost:8083/"];
 const relayurls2 = ["ws://localhost:8084/"];
 
-const _relayServer: InMemoryRelayServer = new InMemoryRelayServer(8083);
-const _relayServer2: InMemoryRelayServer = new InMemoryRelayServer(8084);
+let _relayServer: InMemoryRelayServer;
+let _relayServer2: InMemoryRelayServer;
+
+beforeAll(() => {
+  const _relayServer: InMemoryRelayServer = new InMemoryRelayServer(8083);
+  const _relayServer2: InMemoryRelayServer = new InMemoryRelayServer(8084);
+});
 
 beforeEach(() => {
   relaypool = new RelayPool(relayurls);
