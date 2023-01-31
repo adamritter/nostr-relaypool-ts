@@ -231,6 +231,8 @@ RelayPool::onnotice(cb: (url: string, msg: string) => void)
 
 RelayPool::onerror(cb: (url: string, msg: string) => void)
 
+RelayPool:removeRelay(url: string)
+
 new Author(relayPool: RelayPool, relays: string[], pubkey: string)
 
 Author::metaData(cb: (event: Event) => void, maxDelayms: number): () => void
