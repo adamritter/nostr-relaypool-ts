@@ -100,8 +100,14 @@ export function batchFiltersByRelay(
   const filtersByRelay = new Map<string, Filter[]>();
   const onEvents: OnEvent[] = [];
   let counter = 0;
-  let allUnsub = {unsubcb: () => {}};
-  for (const [onEvent, filtersByRelayBySub, unsub] of subscribedFilters) {
+  let unsubOnEoseCounter = 0;
+  let allUnsub = {unsubcb: () => {}, unsuboneosecb: () => {}};
+  for (const [
+    onEvent,
+    filtersByRelayBySub,
+    unsub,
+    unsubscribeOnEose,
+  ] of subscribedFilters) {
     if (!unsub.unsubcb) {
       continue;
     }
@@ -120,11 +126,19 @@ export function batchFiltersByRelay(
     };
     onEvents.push(onEventWithUnsub);
     counter++;
+    if (!unsubscribeOnEose) {
+      unsubOnEoseCounter++;
+    }
     unsub.unsubcb = () => {
       unsub.unsubcb = undefined;
       counter--;
+      if (!unsubscribeOnEose) {
+        unsubOnEoseCounter--;
+      }
       if (counter === 0) {
         allUnsub.unsubcb();
+      } else if (unsubOnEoseCounter === 0) {
+        allUnsub.unsuboneosecb();
       }
     };
   }

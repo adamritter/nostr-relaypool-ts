@@ -153,7 +153,8 @@ export class RelayPool {
   #subscribeRelays(
     filtersByRelay: Map<string, Filter[]>,
     onEvent: OnEvent,
-    onEose?: OnEose
+    onEose?: OnEose,
+    unsub: {unsubcb?: () => void; unsuboneosecb?: () => void} = {}
   ): () => void {
     if (filtersByRelay.size === 0) {
       return () => {};
@@ -170,7 +171,12 @@ export class RelayPool {
         subs.push(sub);
       }
     }
-    return () => subs.forEach((sub) => sub.unsub());
+    const allUnsub = () => subs.forEach((sub) => sub.unsub());
+    unsub.unsubcb = () => {
+      allUnsub();
+      delete unsub.unsubcb;
+    };
+    return allUnsub;
   }
 
   sendSubscriptions(onEose?: OnEose) {
@@ -181,15 +187,17 @@ export class RelayPool {
     const [onEvent, filtersByRelay, unsub]: [
       OnEvent,
       Map<string, Filter[]>,
-      {unsubcb?: () => void}
+      {unsubcb?: () => void; unsuboneosecb?: () => void}
     ] = batchFiltersByRelay(this.filtersToSubscribe);
     this.filtersToSubscribe = [];
 
-    let allUnsub = this.#subscribeRelays(filtersByRelay, onEvent, onEose);
-    unsub.unsubcb = () => {
-      allUnsub();
-      delete unsub.unsubcb;
-    };
+    let allUnsub = this.#subscribeRelays(
+      filtersByRelay,
+      onEvent,
+      onEose,
+      unsub
+    );
+
     return allUnsub;
   }
 
@@ -239,14 +247,15 @@ export class RelayPool {
       unsub,
       options.unsubscribeOnEose,
     ]);
-    if (maxDelayms !== undefined) {
+    if (maxDelayms === undefined) {
+      return this.sendSubscriptions(onEose);
+    } else {
       this.#resetTimer(maxDelayms);
       return () => {
         unsub.unsubcb?.();
         delete unsub.unsubcb;
       };
     }
-    return this.sendSubscriptions(onEose);
   }
 
   async getEventById(
