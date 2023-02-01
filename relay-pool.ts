@@ -23,9 +23,10 @@ export class RelayPool {
   eventCache?: EventCache;
   minMaxDelayms: number = Infinity;
   filtersToSubscribe: [
-    OnEvent,
-    Map<string, Filter[]>,
-    {unsubcb?: () => void}
+    onEvent: OnEvent,
+    filtersByRelay: Map<string, Filter[]>,
+    unsub: {unsubcb?: () => void},
+    unsubscribeOnEose?: boolean
   ][] = [];
   timer?: ReturnType<typeof setTimeout>;
   externalGetEventById?: (id: string) => NostrToolsEventWithId | undefined;
@@ -217,6 +218,7 @@ export class RelayPool {
       allowDuplicateEvents?: boolean;
       allowOlderEvents?: boolean;
       logAllEvents?: boolean;
+      unsubscribeOnEose?: boolean;
     } = {}
   ): () => void {
     if (maxDelayms !== undefined && onEose) {
@@ -231,7 +233,12 @@ export class RelayPool {
         this.eventCache
       );
     let unsub: {unsubcb?: () => void} = {unsubcb: () => {}};
-    this.filtersToSubscribe.push([dedupedOnEvent, filtersByRelay, unsub]);
+    this.filtersToSubscribe.push([
+      dedupedOnEvent,
+      filtersByRelay,
+      unsub,
+      options.unsubscribeOnEose,
+    ]);
     if (maxDelayms !== undefined) {
       this.#resetTimer(maxDelayms);
       return () => {
