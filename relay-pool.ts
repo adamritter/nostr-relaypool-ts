@@ -165,9 +165,30 @@ export class RelayPool {
       console.log("RelayPool subscribing to relays", filtersByRelay);
     }
     const subs: Sub[] = [];
+    let unsuboneosecbcalled = false;
+    let eoseSubs: Sub[] = [];
+    unsub.unsuboneosecb = () => {
+      unsuboneosecbcalled = true;
+      eoseSubs.forEach((sub) => sub.unsub());
+    };
     for (const [relay, filters] of filtersByRelay) {
-      const sub = this.#subscribeRelay(relay, filters, onEvent, onEose);
+      let subHolder: {sub?: Sub} = {};
+      const subOnEose: OnEose = (events, url) => {
+        if (onEose) {
+          onEose(events, url);
+        }
+        if (unsuboneosecbcalled) {
+          subHolder.sub?.unsub();
+        } else {
+          if (subHolder.sub) {
+            eoseSubs.push(subHolder.sub);
+          }
+        }
+      };
+
+      const sub = this.#subscribeRelay(relay, filters, onEvent, subOnEose);
       if (sub) {
+        subHolder.sub = sub;
         subs.push(sub);
       }
     }
