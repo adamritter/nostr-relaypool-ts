@@ -27,7 +27,7 @@ beforeAll(() => {
 });
 
 beforeEach(() => {
-  relaypool = new RelayPool(relayurls);
+  relaypool = new RelayPool([]);
   _relayServer.clear();
   _relayServer2.clear();
 });
@@ -536,6 +536,8 @@ test("kind0", async () => {
 });
 
 test("getRelayStatuses", async () => {
+  let event = createSignedEvent(0);
+  relaypool.publish(event, relayurls);
   expect(relaypool.getRelayStatuses()).toEqual([[relayurls[0], 0]]);
 });
 
@@ -682,4 +684,59 @@ test("delay_unsub", async () => {
       }),
     ])
   ).resolves.toEqual(false);
+});
+
+test("unsubscribeOnEose", async () => {
+  let relayServer = new InMemoryRelayServer(8099);
+  let event = createSignedEvent();
+  relaypool = new RelayPool([], {noCache: true});
+  relaypool.publish(event, ["ws://localhost:8099/"]);
+  expect(relayServer.subs.size).toEqual(0);
+
+  await new Promise((resolve) => {
+    let sub = relaypool.subscribe(
+      [
+        {
+          kinds: [event.kind],
+        },
+      ],
+      ["ws://localhost:8099/"],
+      (event) => {
+        expect(event).toHaveProperty("kind", event.kind);
+        sub();
+        setTimeout(() => resolve(true), 50);
+      }
+    );
+  });
+
+  expect(_relayServer.subs.size).toEqual(0);
+
+  let found = false;
+  let p2;
+  let p = new Promise((resolve) => {
+    p2 = new Promise((resolve2) => {
+      let _sub = relaypool.subscribe(
+        [
+          {
+            kinds: [event.kind],
+          },
+        ],
+        ["ws://localhost:8099/"],
+        (event) => {
+          expect(event).toHaveProperty("kind", event.kind);
+          found = true;
+          resolve(true);
+        },
+        undefined,
+        () => resolve2(true),
+        {unsubscribeOnEose: true}
+      );
+    });
+  });
+  await expect(p).resolves.toEqual(true);
+  await expect(p2).resolves.toEqual(true);
+  expect(found).toEqual(true);
+  await new Promise((resolve) => setTimeout(() => resolve(true), 50));
+  expect(relayServer.subs.size).toEqual(0);
+  relayServer.close();
 });

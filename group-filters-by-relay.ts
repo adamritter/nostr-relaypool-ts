@@ -141,6 +141,11 @@ export function batchFiltersByRelay(
         allUnsub.unsuboneosecb();
       }
     };
+    if (unsubOnEoseCounter === 0) {
+      setTimeout(() => {
+        allUnsub.unsuboneosecb();
+      }, 0);
+    }
   }
   const onEvent: OnEvent = (event, afterEose, url) => {
     for (const onEvent of onEvents) {
