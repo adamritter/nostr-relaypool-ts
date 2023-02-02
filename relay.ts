@@ -183,6 +183,7 @@ class RelayC {
         case "EOSE": {
           if (data.length !== 2) return; // ignore empty or malformed EOSE
           const id = data[1];
+          console.log("EOSE", this.url, id);
           (this.subListeners[id]?.eose || []).forEach((cb) => cb());
           return;
         }
@@ -212,6 +213,7 @@ class RelayC {
     // this.reconnectTimeout = 0;
     // TODO: Send ephereal messages after subscription, permament before
     for (const subid in this.openSubs) {
+      console.log("REQ", this.url, subid, ...this.openSubs[subid].filters);
       this.trySend(["REQ", subid, ...this.openSubs[subid].filters]);
     }
     for (const msg of this.sendOnConnect) {
@@ -360,6 +362,7 @@ class RelayC {
       skipVerification,
     };
     if (this2.connected) {
+      console.log("REQ2", this.url, subid, ...filters);
       this2.trySend(["REQ", subid, ...filters]);
     }
 
@@ -373,6 +376,7 @@ class RelayC {
         delete this2.openSubs[subid];
         delete this2.subListeners[subid];
         if (this2.connected) {
+          console.log("CLOSE", this.url, subid);
           this2.trySend(["CLOSE", subid]);
         }
       },

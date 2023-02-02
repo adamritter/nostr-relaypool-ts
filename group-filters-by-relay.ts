@@ -141,11 +141,13 @@ export function batchFiltersByRelay(
         allUnsub.unsuboneosecb();
       }
     };
-    if (unsubOnEoseCounter === 0) {
-      setTimeout(() => {
-        allUnsub.unsuboneosecb();
-      }, 0);
-    }
+  }
+  if (unsubOnEoseCounter === 0) {
+    setTimeout(() => {
+      allUnsub.unsuboneosecb();
+    }, 0);
+  } else {
+    console.log("NO unsuboneosecb for ", subscribedFilters);
   }
   const onEvent: OnEvent = (event, afterEose, url) => {
     for (const onEvent of onEvents) {

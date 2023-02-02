@@ -32,6 +32,7 @@ export class RelayPool {
   externalGetEventById?: (id: string) => NostrToolsEventWithId | undefined;
   dontLogSubscriptions?: boolean = false;
   dontAutoReconnect?: boolean = false;
+  startTime: number = new Date().getTime();
 
   constructor(
     relays?: string[],
@@ -154,7 +155,8 @@ export class RelayPool {
     filtersByRelay: Map<string, Filter[]>,
     onEvent: OnEvent,
     onEose?: OnEose,
-    unsub: {unsubcb?: () => void; unsuboneosecb?: () => void} = {}
+    unsub: {unsubcb?: () => void; unsuboneosecb?: () => void} = {},
+    minMaxDelayms?: number
   ): () => void {
     if (filtersByRelay.size === 0) {
       return () => {};
@@ -162,7 +164,13 @@ export class RelayPool {
     // Merging here is done to make logging more readable.
     filtersByRelay = this.#mergeAndRemoveEmptyFiltersByRelay(filtersByRelay);
     if (!this.dontLogSubscriptions) {
-      console.log("RelayPool subscribing to relays", filtersByRelay);
+      console.log(
+        "RelayPool at ",
+        new Date().getTime() - this.startTime,
+        " subscribing to relays, minMaxDelayms=",
+        minMaxDelayms,
+        filtersByRelay
+      );
     }
     const subs: Sub[] = [];
     let unsuboneosecbcalled = false;
@@ -203,6 +211,7 @@ export class RelayPool {
   sendSubscriptions(onEose?: OnEose) {
     clearTimeout(this.timer);
     this.timer = undefined;
+    let minMaxDelayms = this.minMaxDelayms;
     this.minMaxDelayms = Infinity;
 
     const [onEvent, filtersByRelay, unsub]: [
@@ -216,7 +225,8 @@ export class RelayPool {
       filtersByRelay,
       onEvent,
       onEose,
-      unsub
+      unsub,
+      minMaxDelayms // For logging
     );
 
     return allUnsub;
