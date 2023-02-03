@@ -8,6 +8,7 @@ import {
 } from "./on-event-filters";
 import {EventCache} from "./event-cache";
 import {Event} from "./event";
+import {FilterToSubscribe} from "./relay-pool";
 
 const unique = (arr: string[]) => [...new Set(arr)];
 
@@ -90,12 +91,7 @@ function withoutRelay(filter: Filter & {relay?: string}): Filter {
 }
 
 export function batchFiltersByRelay(
-  subscribedFilters: [
-    onEvent: OnEvent,
-    filtersByRelay: Map<string, Filter[]>,
-    unsub: {unsubcb?: () => void},
-    unsubscribeOnEose?: boolean
-  ][]
+  subscribedFilters: FilterToSubscribe[]
 ): [OnEvent, Map<string, Filter[]>, {unsubcb?: () => void}] {
   const filtersByRelay = new Map<string, Filter[]>();
   const onEvents: OnEvent[] = [];
@@ -154,5 +150,6 @@ export function batchFiltersByRelay(
       onEvent(event, afterEose, url);
     }
   };
+  subscribedFilters.length = 0;
   return [onEvent, filtersByRelay, allUnsub];
 }

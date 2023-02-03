@@ -1,10 +1,10 @@
 export class CallbackReplayer<
-  Args extends [],
+  Args extends any[],
   T extends (...args: Args) => void
 > {
   subs: T[] = [];
   events: Args[] = [];
-  onunsub: () => void;
+  onunsub: (() => void) | undefined;
 
   constructor(callback: T, onunsub: () => void) {
     this.onunsub = onunsub;
@@ -21,7 +21,8 @@ export class CallbackReplayer<
     return () => {
       this.subs = this.subs.filter((sub) => sub !== callback);
       if (this.subs.length === 0) {
-        this.onunsub();
+        this.onunsub?.();
+        this.onunsub = undefined;
       }
     };
   }

@@ -8,6 +8,7 @@ import {
   batchFiltersByRelay,
   groupFiltersByRelayAndEmitCacheHits,
 } from "./group-filters-by-relay";
+import {CallbackReplayer} from "./callback-replayer";
 
 const unique = (arr: string[]) => [...new Set(arr)];
 
@@ -17,22 +18,30 @@ export type OnEose = (
   url: string
 ) => void;
 
+export type FilterToSubscribe = [
+  onEvent: OnEvent,
+  filtersByRelay: Map<string, Filter[]>,
+  unsub: {unsubcb?: () => void},
+  unsubscribeOnEose?: boolean,
+  subscriptionCacheKey?: string,
+  maxDelayms?: number
+];
+
 export class RelayPool {
   relayByUrl: Map<string, Relay> = new Map();
   noticecbs: Array<(url: string, msg: string) => void> = [];
   eventCache?: EventCache;
   minMaxDelayms: number = Infinity;
-  filtersToSubscribe: [
-    onEvent: OnEvent,
-    filtersByRelay: Map<string, Filter[]>,
-    unsub: {unsubcb?: () => void},
-    unsubscribeOnEose?: boolean
-  ][] = [];
+  filtersToSubscribe: FilterToSubscribe[] = [];
   timer?: ReturnType<typeof setTimeout>;
   externalGetEventById?: (id: string) => NostrToolsEventWithId | undefined;
   dontLogSubscriptions?: boolean = false;
   dontAutoReconnect?: boolean = false;
   startTime: number = new Date().getTime();
+  subscriptionCache = new Map<
+    string,
+    CallbackReplayer<[Event, boolean, string | undefined], OnEvent>
+  >();
 
   constructor(
     relays?: string[],
@@ -219,7 +228,6 @@ export class RelayPool {
       Map<string, Filter[]>,
       {unsubcb?: () => void; unsuboneosecb?: () => void}
     ] = batchFiltersByRelay(this.filtersToSubscribe);
-    this.filtersToSubscribe = [];
 
     let allUnsub = this.#subscribeRelays(
       filtersByRelay,
@@ -263,6 +271,15 @@ export class RelayPool {
     if (maxDelayms !== undefined && onEose) {
       throw new Error("maxDelayms and onEose cannot be used together");
     }
+    let subscriptionCacheKey: string | undefined;
+    if (options.unsubscribeOnEose && !onEose) {
+      subscriptionCacheKey = JSON.stringify([filters, relays]);
+      const cachedSubscription =
+        this.subscriptionCache.get(subscriptionCacheKey);
+      if (cachedSubscription) {
+        return cachedSubscription.sub(onEvent);
+      }
+    }
     const [dedupedOnEvent, filtersByRelay] =
       groupFiltersByRelayAndEmitCacheHits(
         filters,
@@ -277,6 +294,8 @@ export class RelayPool {
       filtersByRelay,
       unsub,
       options.unsubscribeOnEose,
+      subscriptionCacheKey,
+      maxDelayms,
     ]);
     if (maxDelayms === undefined) {
       return this.sendSubscriptions(onEose);
