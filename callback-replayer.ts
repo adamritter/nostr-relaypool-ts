@@ -6,13 +6,13 @@ export class CallbackReplayer<
   events: Args[] = [];
   onunsub: (() => void) | undefined;
 
-  constructor(callback: T, onunsub: () => void) {
+  constructor(onunsub: () => void) {
     this.onunsub = onunsub;
-    // @ts-ignore
-    callback((...args: Args) => {
-      this.events.push(args);
-      this.subs.forEach((sub) => sub(...args));
-    });
+  }
+
+  event(...args: Args) {
+    this.events.push(args);
+    this.subs.forEach((sub) => sub(...args));
   }
 
   sub(callback: T) {
