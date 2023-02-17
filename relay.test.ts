@@ -223,7 +223,9 @@ test("autoreconnect", async () => {
   await publishAndGetEvent();
 });
 
-test.skip("memory usage", async () => {
+// jest -t 'relay memory' --testTimeout 1000000 --logHeapUsage
+//  PASS  ./relay.test.ts (93.914 s, 480 MB heap size)
+test.skip("relay memory usage", async () => {
   // @ts-ignore
   relay.relay.logging = false;
 

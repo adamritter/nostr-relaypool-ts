@@ -41,7 +41,10 @@ afterAll(async () => {
   await _relayServer2.close();
 });
 
-function createSignedEvent(kind = 27572): Event & {id: string} {
+function createSignedEvent(
+  kind = 27572,
+  content = "nostr-tools test suite"
+): Event & {id: string} {
   const sk = generatePrivateKey();
   const pk = getPublicKey(sk);
   const event = {
@@ -49,7 +52,7 @@ function createSignedEvent(kind = 27572): Event & {id: string} {
     pubkey: pk,
     created_at: Math.floor(Date.now() / 1000),
     tags: [],
-    content: "nostr-tools test suite",
+    content,
   };
   const eventId = getEventHash(event);
   // @ts-ignore
@@ -61,9 +64,11 @@ function createSignedEvent(kind = 27572): Event & {id: string} {
 }
 
 async function publishAndGetEvent(
-  relays: string[]
+  relays: string[],
+  kind = 27572,
+  content = "nostr-tools test suite"
 ): Promise<Event & {id: string}> {
-  const event = createSignedEvent();
+  const event = createSignedEvent(kind, content);
   relaypool.publish(event, relays);
   const a = relaypool.getEventById(event.id, relays, Infinity);
   relaypool.sendSubscriptions();
@@ -779,4 +784,28 @@ test("subscriptionCache", async () => {
   });
   await sleepms(10);
   expect(_relayServer.totalSubscriptions).toEqual(2);
+});
+
+// jest -t 'pool memory' --testTimeout 1000000 --logHeapUsage
+//  PASS  ./relay-pool.test.ts (92.9 s, 348 MB heap size)
+test.skip("pool memory usage", async () => {
+  console.log("creating new relaypool");
+  relaypool = new RelayPool(relayurls, {
+    noCache: true,
+    dontLogSubscriptions: true,
+  });
+  relaypool.relayByUrl.forEach((relay) => {
+    // @ts-ignore
+    relay.relay.logging = false;
+  });
+  await publishAndGetEvent(relayurls, 100, "x".repeat(20 * 1024 * 1024));
+
+  for (let i = 0; i < 300; i++) {
+    await new Promise((resolve) => {
+      const unsub = relaypool.subscribe([{}], relayurls, (event) => {
+        unsub();
+        resolve(true);
+      });
+    });
+  }
 });

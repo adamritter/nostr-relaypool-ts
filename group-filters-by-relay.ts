@@ -175,7 +175,7 @@ export function batchFiltersByRelay(
       allUnsub.unsuboneosecb();
     }, 0);
   } else {
-    console.log("NO unsuboneosecb for ", subscribedFilters);
+    // console.log("NO unsuboneosecb for ", subscribedFilters);
   }
   const onEvent: OnEvent = (event, afterEose, url) => {
     for (const onEvent of onEvents) {
