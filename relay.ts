@@ -45,6 +45,7 @@ export function relayInit(
 class RelayC {
   url: string;
   alreadyHaveEvent?: (id: string) => (Event & {id: string}) | undefined;
+  logging: boolean = true;
   constructor(
     url: string,
     alreadyHaveEvent?: (id: string) => (Event & {id: string}) | undefined,
@@ -183,7 +184,9 @@ class RelayC {
         case "EOSE": {
           if (data.length !== 2) return; // ignore empty or malformed EOSE
           const id = data[1];
-          console.log("EOSE", this.url, id);
+          if (this.logging) {
+            console.log("EOSE", this.url, id);
+          }
           (this.subListeners[id]?.eose || []).forEach((cb) => cb());
           return;
         }
@@ -213,10 +216,15 @@ class RelayC {
     // this.reconnectTimeout = 0;
     // TODO: Send ephereal messages after subscription, permament before
     for (const subid in this.openSubs) {
-      console.log("REQ", this.url, subid, ...this.openSubs[subid].filters);
+      if (this.logging) {
+        console.log("REQ", this.url, subid, ...this.openSubs[subid].filters);
+      }
       this.trySend(["REQ", subid, ...this.openSubs[subid].filters]);
     }
     for (const msg of this.sendOnConnect) {
+      if (this.logging) {
+        console.log("(Relay msg)", this.url, msg);
+      }
       this.ws?.send(msg);
     }
     this.sendOnConnect = [];
@@ -264,6 +272,8 @@ class RelayC {
       get status() {
         return this2.status;
       },
+      // @ts-ignore
+      relay: this2,
     };
   }
   get status() {
@@ -274,9 +284,7 @@ class RelayC {
   }
   close(): Promise<void> {
     this.closedByClient = true;
-    if (this.connected) {
-      this.ws?.close();
-    }
+    this.ws?.close();
     return new Promise<void>((resolve) => {
       this.resolveClose = resolve;
     });
@@ -362,7 +370,9 @@ class RelayC {
       skipVerification,
     };
     if (this2.connected) {
-      console.log("REQ2", this.url, subid, ...filters);
+      if (this.logging) {
+        console.log("REQ2", this.url, subid, ...filters);
+      }
       this2.trySend(["REQ", subid, ...filters]);
     }
 
@@ -376,7 +386,9 @@ class RelayC {
         delete this2.openSubs[subid];
         delete this2.subListeners[subid];
         if (this2.connected) {
-          console.log("CLOSE", this.url, subid);
+          if (this2.logging) {
+            console.log("CLOSE", this.url, subid);
+          }
           this2.trySend(["CLOSE", subid]);
         }
       },

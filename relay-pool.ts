@@ -27,6 +27,13 @@ export type FilterToSubscribe = [
   maxDelayms?: number
 ];
 
+export type SubscriptionOptions = {
+  allowDuplicateEvents?: boolean;
+  allowOlderEvents?: boolean;
+  logAllEvents?: boolean;
+  unsubscribeOnEose?: boolean;
+};
+
 export class RelayPool {
   relayByUrl: Map<string, Relay> = new Map();
   noticecbs: Array<(url: string, msg: string) => void> = [];
@@ -38,10 +45,11 @@ export class RelayPool {
   dontLogSubscriptions?: boolean = false;
   dontAutoReconnect?: boolean = false;
   startTime: number = new Date().getTime();
-  subscriptionCache = new Map<
+  keepSignature?: boolean;
+  subscriptionCache?: Map<
     string,
     CallbackReplayer<[Event, boolean, string | undefined], OnEvent>
-  >();
+  >;
 
   constructor(
     relays?: string[],
@@ -50,13 +58,21 @@ export class RelayPool {
       externalGetEventById?: (id: string) => NostrToolsEventWithId | undefined;
       dontLogSubscriptions?: boolean;
       dontAutoReconnect?: boolean;
+      noSubscriptionCache?: boolean;
+      keepSignature?: boolean;
     } = {}
   ) {
     this.externalGetEventById = options.externalGetEventById;
     this.dontLogSubscriptions = options.dontLogSubscriptions;
     this.dontAutoReconnect = options.dontAutoReconnect;
+    this.keepSignature = options.keepSignature;
     if (!options.noCache) {
       this.eventCache = new EventCache();
+    }
+    // Don't enable subscription cache by default yet
+    if (options.noSubscriptionCache === false) {
+      this.subscriptionCache = new Map();
+      console.log("subscription cache enabled");
     }
     if (relays) {
       for (const relay of unique(relays)) {
@@ -114,7 +130,8 @@ export class RelayPool {
     relay: string,
     filters: Filter[],
     onEvent: OnEvent,
-    onEose?: OnEose
+    onEose?: OnEose,
+    dontStoreEventsBySub?: boolean
   ): Sub | undefined {
     const mergedAndRemovedEmptyFilters =
       mergeSimilarAndRemoveEmptyFilters(filters);
@@ -130,16 +147,20 @@ export class RelayPool {
         this,
         Array.from(this.relayByUrl.keys())
       );
+      if (this.keepSignature) {
+        event.sig = nostrEvent.sig;
+      }
       this.eventCache?.addEvent(event);
-      eventsBySub?.push(event);
+      if (onEose && !dontStoreEventsBySub) {
+        eventsBySub?.push(event);
+      }
       onEvent(event, eventsBySub === undefined, relay);
     });
-    if (onEose) {
-      sub.on("eose", () => {
-        onEose(eventsBySub, relay);
-        eventsBySub = undefined;
-      });
-    }
+    sub.on("eose", () => {
+      onEose?.(eventsBySub, relay);
+      eventsBySub = undefined;
+    });
+
     return sub;
   }
 
@@ -165,7 +186,8 @@ export class RelayPool {
     onEvent: OnEvent,
     onEose?: OnEose,
     unsub: {unsubcb?: () => void; unsuboneosecb?: () => void} = {},
-    minMaxDelayms?: number
+    minMaxDelayms?: number,
+    dontStoreEventsBySub?: boolean
   ): () => void {
     if (filtersByRelay.size === 0) {
       return () => {};
@@ -203,7 +225,13 @@ export class RelayPool {
         }
       };
 
-      const sub = this.#subscribeRelay(relay, filters, onEvent, subOnEose);
+      const sub = this.#subscribeRelay(
+        relay,
+        filters,
+        onEvent,
+        subOnEose,
+        !onEose || dontStoreEventsBySub
+      );
       if (sub) {
         subHolder.sub = sub;
         subs.push(sub);
@@ -227,7 +255,7 @@ export class RelayPool {
       OnEvent,
       Map<string, Filter[]>,
       {unsubcb?: () => void; unsuboneosecb?: () => void}
-    ] = batchFiltersByRelay(this.filtersToSubscribe);
+    ] = batchFiltersByRelay(this.filtersToSubscribe, this.subscriptionCache);
 
     let allUnsub = this.#subscribeRelays(
       filtersByRelay,
@@ -261,12 +289,7 @@ export class RelayPool {
     onEvent: OnEvent,
     maxDelayms?: number,
     onEose?: OnEose,
-    options: {
-      allowDuplicateEvents?: boolean;
-      allowOlderEvents?: boolean;
-      logAllEvents?: boolean;
-      unsubscribeOnEose?: boolean;
-    } = {}
+    options: SubscriptionOptions = {}
   ): () => void {
     if (maxDelayms !== undefined && onEose) {
       throw new Error("maxDelayms and onEose cannot be used together");
@@ -275,7 +298,7 @@ export class RelayPool {
     if (options.unsubscribeOnEose && !onEose) {
       subscriptionCacheKey = JSON.stringify([filters, relays]);
       const cachedSubscription =
-        this.subscriptionCache.get(subscriptionCacheKey);
+        this.subscriptionCache?.get(subscriptionCacheKey);
       if (cachedSubscription) {
         return cachedSubscription.sub(onEvent);
       }

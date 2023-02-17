@@ -8,6 +8,7 @@ export class InMemoryRelayServer {
   wss: WebSocketServer;
   subs: Map<string, Filter[]> = new Map();
   connections: Set<WebSocket> = new Set();
+  totalSubscriptions = 0;
   constructor(port = 8081, host = "localhost") {
     this.wss = new WebSocketServer({port, host});
     this.wss.on("connection", (ws) => {
@@ -19,6 +20,7 @@ export class InMemoryRelayServer {
         if (data && data[0] === "REQ") {
           const sub = data[1];
           const filters = data.slice(2);
+          this.totalSubscriptions++;
           this.subs.set(sub, filters);
           for (const event of this.events) {
             if (matchFilters(filters, event)) {
@@ -50,6 +52,7 @@ export class InMemoryRelayServer {
   clear() {
     this.events = [];
     this.subs = new Map();
+    this.totalSubscriptions = 0;
   }
   disconnectAll() {
     for (const ws of this.connections) {

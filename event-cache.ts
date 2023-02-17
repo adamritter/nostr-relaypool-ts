@@ -44,6 +44,9 @@ export class EventCache {
   }
 
   addEvent(event: Event) {
+    if (this.getEventById(event.id)) {
+      return;
+    }
     this.eventsById.set(event.id, event);
     if (event.kind === Kind.Metadata) {
       this.metadataByPubKey.set(event.pubkey, event);

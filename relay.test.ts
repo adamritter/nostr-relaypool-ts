@@ -46,7 +46,9 @@ test("connectivity", () => {
   ).resolves.toBe(true);
 });
 
-async function publishAndGetEvent(): Promise<Event & {id: string}> {
+async function publishAndGetEvent(
+  options: {content?: string} = {}
+): Promise<Event & {id: string}> {
   const sk = generatePrivateKey();
   const pk = getPublicKey(sk);
   const event = {
@@ -54,7 +56,7 @@ async function publishAndGetEvent(): Promise<Event & {id: string}> {
     pubkey: pk,
     created_at: Math.floor(Date.now() / 1000),
     tags: [],
-    content: "nostr-tools test suite",
+    content: options.content || "nostr-tools test suite",
   };
   const eventId = getEventHash(event);
   // @ts-ignore
@@ -219,4 +221,21 @@ test("autoreconnect", async () => {
   await new Promise((resolve) => setTimeout(resolve, 0));
   expect(relay.status).toBeGreaterThanOrEqual(WebSocket.CLOSING);
   await publishAndGetEvent();
+});
+
+test.skip("memory usage", async () => {
+  // @ts-ignore
+  relay.relay.logging = false;
+
+  await publishAndGetEvent({content: "x".repeat(20 * 1024 * 1024)});
+
+  for (let i = 0; i < 300; i++) {
+    await new Promise((resolve) => {
+      const sub = relay.sub([{}]);
+      sub.on("event", (event: Event) => {
+        sub.unsub();
+        resolve(true);
+      });
+    });
+  }
 });

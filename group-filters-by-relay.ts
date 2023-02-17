@@ -9,6 +9,7 @@ import {
 import {EventCache} from "./event-cache";
 import {Event} from "./event";
 import {FilterToSubscribe} from "./relay-pool";
+import {CallbackReplayer} from "./callback-replayer";
 
 const unique = (arr: string[]) => [...new Set(arr)];
 
@@ -91,18 +92,32 @@ function withoutRelay(filter: Filter & {relay?: string}): Filter {
 }
 
 export function batchFiltersByRelay(
-  subscribedFilters: FilterToSubscribe[]
+  subscribedFilters: FilterToSubscribe[],
+  subscriptionCache?: Map<
+    string,
+    CallbackReplayer<[Event, boolean, string | undefined], OnEvent>
+  >
 ): [OnEvent, Map<string, Filter[]>, {unsubcb?: () => void}] {
   const filtersByRelay = new Map<string, Filter[]>();
   const onEvents: OnEvent[] = [];
   let counter = 0;
   let unsubOnEoseCounter = 0;
   let allUnsub = {unsubcb: () => {}, unsuboneosecb: () => {}};
+  let unsubVirtualSubscription = () => {
+    counter--;
+
+    if (counter === 0) {
+      allUnsub.unsubcb();
+    } else if (unsubOnEoseCounter === 0) {
+      allUnsub.unsuboneosecb();
+    }
+  };
   for (const [
     onEvent,
     filtersByRelayBySub,
     unsub,
     unsubscribeOnEose,
+    subscriptionCacheKey,
   ] of subscribedFilters) {
     if (!unsub.unsubcb) {
       continue;
@@ -120,24 +135,41 @@ export function batchFiltersByRelay(
         onEvent(event, afterEose, url);
       }
     };
-    onEvents.push(onEventWithUnsub);
+
+    if (subscriptionCache && subscriptionCacheKey) {
+      const callbackReplayer: CallbackReplayer<
+        [Event, boolean, string | undefined],
+        OnEvent
+      > = new CallbackReplayer(unsubVirtualSubscription);
+      onEvents.push((event, afterEose, url) => {
+        callbackReplayer.event(event, afterEose, url);
+      });
+      let unsubReplayerVirtualSubscription =
+        callbackReplayer.sub(onEventWithUnsub);
+      subscriptionCache.set(subscriptionCacheKey, callbackReplayer);
+      unsub.unsubcb = () => {
+        unsub.unsubcb = undefined;
+        unsubReplayerVirtualSubscription();
+        if (!unsubscribeOnEose) {
+          unsubOnEoseCounter--;
+        }
+      };
+    } else {
+      onEvents.push(onEventWithUnsub);
+      unsub.unsubcb = () => {
+        unsub.unsubcb = undefined;
+        unsubVirtualSubscription();
+        if (!unsubscribeOnEose) {
+          unsubOnEoseCounter--;
+        }
+      };
+    }
     counter++;
     if (!unsubscribeOnEose) {
       unsubOnEoseCounter++;
     }
-    unsub.unsubcb = () => {
-      unsub.unsubcb = undefined;
-      counter--;
-      if (!unsubscribeOnEose) {
-        unsubOnEoseCounter--;
-      }
-      if (counter === 0) {
-        allUnsub.unsubcb();
-      } else if (unsubOnEoseCounter === 0) {
-        allUnsub.unsuboneosecb();
-      }
-    };
   }
+
   if (unsubOnEoseCounter === 0) {
     setTimeout(() => {
       allUnsub.unsuboneosecb();

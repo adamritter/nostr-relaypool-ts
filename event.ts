@@ -14,6 +14,7 @@ export class Event implements NostrToolsEventWithId {
   content: string;
   relayPool: RelayPool;
   relays: string[];
+  sig?: string;
 
   constructor(
     event: NostrToolsEvent & {id: string},

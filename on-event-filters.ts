@@ -1,5 +1,10 @@
 import {Filter, Kind, matchFilter} from "nostr-tools";
 import {Event} from "./event";
+export type OnEventArgs = [
+  event: Event,
+  afterEose: boolean,
+  url: string | undefined
+];
 export type OnEvent = (
   event: Event,
   afterEose: boolean,

@@ -27,7 +27,7 @@ beforeAll(() => {
 });
 
 beforeEach(() => {
-  relaypool = new RelayPool([]);
+  relaypool = new RelayPool([], {noSubscriptionCache: false});
   _relayServer.clear();
   _relayServer2.clear();
 });
@@ -549,11 +549,7 @@ test("nounsub", async () => {
     new Promise((resolve1) => {
       let counter = 0;
       let _sub1 = relaypool.subscribe(
-        [
-          {
-            kinds: [0],
-          },
-        ],
+        filtersByKind(event),
         relayurls,
         (event) => {
           expect(event).toHaveProperty("kind", 0);
@@ -579,11 +575,7 @@ test("unsub", async () => {
     new Promise((resolve1) => {
       let counter = 0;
       let sub1 = relaypool.subscribe(
-        [
-          {
-            kinds: [0],
-          },
-        ],
+        filtersByKind(event),
         relayurls,
         (event) => {
           expect(event).toHaveProperty("kind", 0);
@@ -617,11 +609,7 @@ test("delay_nounsub", async () => {
     new Promise((resolve1) => {
       let counter = 0;
       let _sub1 = relaypool.subscribe(
-        [
-          {
-            kinds: [0],
-          },
-        ],
+        filtersByKind(event),
         relayurls,
         (event) => {
           expect(event).toHaveProperty("kind", 0);
@@ -655,11 +643,7 @@ test("delay_unsub", async () => {
     new Promise((resolve1) => {
       let counter = 0;
       let sub1 = relaypool.subscribe(
-        [
-          {
-            kinds: [0],
-          },
-        ],
+        filtersByKind(event),
         relayurls,
         (event) => {
           expect(event).toHaveProperty("kind", 0);
@@ -695,11 +679,7 @@ test("unsubscribeOnEose", async () => {
 
   await new Promise((resolve) => {
     let sub = relaypool.subscribe(
-      [
-        {
-          kinds: [event.kind],
-        },
-      ],
+      filtersByKind(event),
       ["ws://localhost:8099/"],
       (event) => {
         expect(event).toHaveProperty("kind", event.kind);
@@ -716,11 +696,7 @@ test("unsubscribeOnEose", async () => {
   let p = new Promise((resolve) => {
     p2 = new Promise((resolve2) => {
       let _sub = relaypool.subscribe(
-        [
-          {
-            kinds: [event.kind],
-          },
-        ],
+        filtersByKind(event),
         ["ws://localhost:8099/"],
         (event) => {
           expect(event).toHaveProperty("kind", event.kind);
@@ -736,7 +712,71 @@ test("unsubscribeOnEose", async () => {
   await expect(p).resolves.toEqual(true);
   await expect(p2).resolves.toEqual(true);
   expect(found).toEqual(true);
-  await new Promise((resolve) => setTimeout(() => resolve(true), 50));
+  await sleepms(50);
   expect(relayServer.subs.size).toEqual(0);
   relayServer.close();
+});
+
+const filtersByAuthor = (event: Event) => [{authors: [event.pubkey]}];
+const filtersByKind = (event: Event) => [{kinds: [event.kind]}];
+const sleepms = (timeoutMs: number) =>
+  new Promise((resolve) => setTimeout(() => resolve(true), timeoutMs));
+
+// const subscribePromise = (
+//   relaypool: RelayPool,
+//   filters: Filter[],
+//   relays: string[],
+//   onEventPromise: (resolve: (value: any) => void) => OnEvent,
+//   maxDelayms?: number | undefined,
+//   onEosePromise?: (resolve: (value: any) => void) => OnEose,
+//   options?: SubscriptionOptions
+// ) =>
+//   new Promise((resolve) =>
+//     relaypool.subscribe(
+//       filters,
+//       relays,
+//       onEventPromise(resolve),
+//       maxDelayms,
+//       onEosePromise?.(resolve),
+//       options
+//     )
+//   );
+
+test("subscriptionCache", async () => {
+  let event = createSignedEvent();
+  relaypool.publish(event, relayurls);
+  expect(_relayServer.totalSubscriptions).toEqual(0);
+
+  await new Promise((resolve) => {
+    relaypool.subscribe(filtersByKind(event), relayurls, (event) => {
+      resolve(true);
+    });
+  });
+
+  await new Promise((resolve) => {
+    relaypool.subscribe(
+      filtersByAuthor(event),
+      relayurls,
+      (event) => {
+        resolve(true);
+      },
+      undefined,
+      undefined,
+      {unsubscribeOnEose: true}
+    );
+  });
+  await new Promise((resolve) => {
+    relaypool.subscribe(
+      filtersByAuthor(event),
+      relayurls,
+      (event) => {
+        resolve(true);
+      },
+      undefined,
+      undefined,
+      {unsubscribeOnEose: true}
+    );
+  });
+  await sleepms(10);
+  expect(_relayServer.totalSubscriptions).toEqual(2);
 });
