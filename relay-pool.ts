@@ -68,7 +68,7 @@ export class RelayPool {
     this.dontLogSubscriptions = options.dontLogSubscriptions;
     this.dontAutoReconnect = options.dontAutoReconnect;
     this.keepSignature = options.keepSignature;
-    this.skipVerification = options.keepSignature;
+    this.skipVerification = options.skipVerification;
     if (!options.noCache) {
       this.eventCache = new EventCache();
     }
