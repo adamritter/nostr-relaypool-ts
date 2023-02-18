@@ -117,7 +117,7 @@ author.text(console.log, 10, 0);
 
 ```typescript
 RelayPool(relays:string[] = [], options:{noCache?: boolean, dontLogSubscriptions?: boolean,
-          keepSignature?: boolean} = {})
+          keepSignature?: boolean, skipVerification?: boolean} = {})
 ```
 
 RelayPool constructor connects to the given relays, but it doesn't determine which relays are used for specific subscriptions.
@@ -130,6 +130,7 @@ options:
 - dontLogSubscriptions: turns of logging subscriptions.
   It's on by default as it's just 1 entry per RelayPool subscription, and it can help clients significantly
 - keepSignature: keep signatures for events
+- skipVerification: skip event signature verification
 
 <br/>
 
