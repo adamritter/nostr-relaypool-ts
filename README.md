@@ -139,7 +139,7 @@ options:
                       onEvent: (event: Event & {id: string}, isAfterEose: boolean,
                           relayURL: string | undefined) => void,
                       maxDelayms?: number,
-                      onEose?: (events, relayURL) => void,
+                      onEose?: (events, relayURL, minCreatedAt) => void,
                       options: {allowDuplicateEvents?: boolean, allowOlderEvents?: boolean,
                           logAllEvents?: boolean} = {}
               ) : () => void
@@ -195,6 +195,8 @@ If it's used, the returned function doesn't do anything. It can't be used togeth
 
 - onEose: called for each EOSE event received from a relay with the events
   that were received from the particular server. Can't be used together with maxDelayms
+
+  minCreatedAt contains the smallest created_at seen or Infinity if there were no events in the subscription.
 
 - options:
 

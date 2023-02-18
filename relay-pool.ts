@@ -15,7 +15,8 @@ const unique = (arr: string[]) => [...new Set(arr)];
 export {type OnEvent} from "./on-event-filters";
 export type OnEose = (
   eventsByThisSub: Event[] | undefined,
-  url: string
+  url: string,
+  minCreatedAt: number
 ) => void;
 
 export type FilterToSubscribe = [
@@ -141,7 +142,11 @@ export class RelayPool {
     const instance = this.addOrGetRelay(relay);
     const sub = instance.sub(mergedAndRemovedEmptyFilters);
     let eventsBySub: Event[] | undefined = [];
+    let minCreatedAt = Infinity;
     sub.on("event", (nostrEvent: NostrToolsEventWithId) => {
+      if (nostrEvent.created_at < minCreatedAt) {
+        minCreatedAt = nostrEvent.created_at;
+      }
       let event = new Event(
         nostrEvent,
         this,
@@ -157,7 +162,7 @@ export class RelayPool {
       onEvent(event, eventsBySub === undefined, relay);
     });
     sub.on("eose", () => {
-      onEose?.(eventsBySub, relay);
+      onEose?.(eventsBySub, relay, minCreatedAt);
       eventsBySub = undefined;
     });
 
@@ -212,9 +217,9 @@ export class RelayPool {
     };
     for (const [relay, filters] of filtersByRelay) {
       let subHolder: {sub?: Sub} = {};
-      const subOnEose: OnEose = (events, url) => {
+      const subOnEose: OnEose = (events, url, minCreatedAt) => {
         if (onEose) {
-          onEose(events, url);
+          onEose(events, url, minCreatedAt);
         }
         if (unsuboneosecbcalled) {
           subHolder.sub?.unsub();

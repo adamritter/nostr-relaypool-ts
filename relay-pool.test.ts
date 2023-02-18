@@ -119,6 +119,33 @@ test("external geteventbyid", async () => {
   return expect(promiseAll).resolves.toEqual([true, true]);
 });
 
+test("empty", async () => {
+  var resolve2: (success: boolean) => void;
+  const promiseAll = Promise.all([
+    new Promise((resolve) => {
+      resolve2 = resolve;
+    }),
+  ]);
+  relaypool.subscribe(
+    [
+      {
+        kinds: [27572], // Force no caching
+      },
+    ],
+    relayurls,
+    (event, afterEose, url) => {},
+    undefined,
+    (events, url, minCreatedAt) => {
+      expect(events).toHaveLength(0);
+      expect(minCreatedAt).toBe(Infinity);
+      expect(url).toBe(relayurls[0]);
+      resolve2(true);
+    }
+  );
+
+  return expect(promiseAll).resolves.toEqual([true]);
+});
+
 test("querying relaypool", async () => {
   const event = await publishAndGetEvent(relayurls);
   expect(event.kind).toEqual(27572);
@@ -146,10 +173,11 @@ test("querying relaypool", async () => {
       resolve1(true);
     },
     undefined,
-    (events, url) => {
+    (events, url, minCreatedAt) => {
       expect(events).toHaveLength(1);
       if (events && events.length > 0) {
         expect(events[0]).toHaveProperty("id", event.id);
+        expect(minCreatedAt).toBe(events[0].created_at);
       }
       expect(url).toBe(relayurls[0]);
       resolve2(true);
