@@ -50,6 +50,7 @@ export class RelayPool {
     string,
     CallbackReplayer<[Event, boolean, string | undefined], OnEvent>
   >;
+  skipVerification?: boolean;
 
   constructor(
     relays?: string[],
@@ -60,12 +61,14 @@ export class RelayPool {
       dontAutoReconnect?: boolean;
       noSubscriptionCache?: boolean;
       keepSignature?: boolean;
+      skipVerification?: boolean;
     } = {}
   ) {
     this.externalGetEventById = options.externalGetEventById;
     this.dontLogSubscriptions = options.dontLogSubscriptions;
     this.dontAutoReconnect = options.dontAutoReconnect;
     this.keepSignature = options.keepSignature;
+    this.skipVerification = options.skipVerification;
     if (!options.noCache) {
       this.eventCache = new EventCache();
     }
@@ -139,7 +142,7 @@ export class RelayPool {
       return;
     }
     const instance = this.addOrGetRelay(relay);
-    const sub = instance.sub(mergedAndRemovedEmptyFilters);
+    const sub = instance.sub(mergedAndRemovedEmptyFilters, { skipVerification: this.skipVerification });
     let eventsBySub: Event[] | undefined = [];
     sub.on("event", (nostrEvent: NostrToolsEventWithId) => {
       let event = new Event(
