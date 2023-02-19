@@ -34,6 +34,7 @@ export type Sub = {
 type SubscriptionOptions = {
   skipVerification?: boolean;
   id?: string;
+  eventIds?: Set<string>;
 };
 export function relayInit(
   url: string,
@@ -45,7 +46,7 @@ export function relayInit(
 class RelayC {
   url: string;
   alreadyHaveEvent?: (id: string) => (Event & {id: string}) | undefined;
-  logging: boolean = true;
+  logging: boolean = false;
   constructor(
     url: string,
     alreadyHaveEvent?: (id: string) => (Event & {id: string}) | undefined,
@@ -144,8 +145,8 @@ class RelayC {
     if (!json) {
       return;
     }
-    let event =
-      this.alreadyHaveEvent && this.alreadyHaveEvent(getHex64(json, "id"));
+    let eventId = getHex64(json, "id");
+    let event = this.alreadyHaveEvent?.(eventId);
     if (event) {
       const listener = this.subListeners[getSubName(json)];
 
@@ -171,6 +172,11 @@ class RelayC {
 
           const id = data[1];
           const event = data[2];
+          if (this.openSubs[id].eventIds?.has(eventId)) {
+            return;
+          }
+          this.openSubs[id].eventIds?.add(eventId);
+
           if (
             validateEvent(event) &&
             this.openSubs[id] &&
@@ -253,7 +259,7 @@ class RelayC {
     try {
       await this.connectRelay();
     } catch (err) {
-      console.log("connectRelay ", this.url, " error ", err);
+      console.error("Error connecting relay ", this.url);
     }
   }
 
