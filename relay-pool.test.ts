@@ -27,7 +27,7 @@ beforeAll(() => {
 });
 
 beforeEach(() => {
-  relaypool = new RelayPool([], {subscriptionCache: true});
+  relaypool = new RelayPool([], {subscriptionCache: true, useEventCache: true});
   _relayServer.clear();
   _relayServer2.clear();
 });
@@ -706,7 +706,7 @@ test("delay_unsub", async () => {
 test("unsubscribeOnEose", async () => {
   let relayServer = new InMemoryRelayServer(8099);
   let event = createSignedEvent();
-  relaypool = new RelayPool([], {noCache: true});
+  relaypool = new RelayPool([]);
   relaypool.publish(event, ["ws://localhost:8099/"]);
   expect(relayServer.subs.size).toEqual(0);
 
@@ -818,9 +818,7 @@ test("subscriptionCache", async () => {
 //  PASS  ./relay-pool.test.ts (92.9 s, 348 MB heap size)
 test.skip("pool memory usage", async () => {
   console.log("creating new relaypool");
-  relaypool = new RelayPool(relayurls, {
-    noCache: true,
-  });
+  relaypool = new RelayPool(relayurls);
   relaypool.relayByUrl.forEach((relay) => {
     // @ts-ignore
     relay.relay.logging = false;

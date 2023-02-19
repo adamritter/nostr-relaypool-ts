@@ -56,7 +56,7 @@ export class RelayPool {
   constructor(
     relays?: string[],
     options: {
-      noCache?: boolean;
+      useEventCache?: boolean;
       externalGetEventById?: (id: string) => NostrToolsEventWithId | undefined;
       logSubscriptions?: boolean;
       dontAutoReconnect?: boolean;
@@ -70,7 +70,7 @@ export class RelayPool {
     this.dontAutoReconnect = options.dontAutoReconnect;
     this.deleteSignatures = options.deleteSignatures;
     this.skipVerification = options.skipVerification;
-    if (!options.noCache) {
+    if (options.useEventCache) {
       this.eventCache = new EventCache();
     }
     // Don't enable subscription cache by default yet
