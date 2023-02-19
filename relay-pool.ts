@@ -46,7 +46,7 @@ export class RelayPool {
   dontLogSubscriptions?: boolean = false;
   dontAutoReconnect?: boolean = false;
   startTime: number = new Date().getTime();
-  keepSignature?: boolean;
+  deleteSignatures?: boolean;
   subscriptionCache?: Map<
     string,
     CallbackReplayer<[Event, boolean, string | undefined], OnEvent>
@@ -61,14 +61,14 @@ export class RelayPool {
       dontLogSubscriptions?: boolean;
       dontAutoReconnect?: boolean;
       noSubscriptionCache?: boolean;
-      keepSignature?: boolean;
+      deleteSignatures?: boolean;
       skipVerification?: boolean;
     } = {}
   ) {
     this.externalGetEventById = options.externalGetEventById;
     this.dontLogSubscriptions = options.dontLogSubscriptions;
     this.dontAutoReconnect = options.dontAutoReconnect;
-    this.keepSignature = options.keepSignature;
+    this.deleteSignatures = options.deleteSignatures;
     this.skipVerification = options.skipVerification;
     if (!options.noCache) {
       this.eventCache = new EventCache();
@@ -143,7 +143,9 @@ export class RelayPool {
       return;
     }
     const instance = this.addOrGetRelay(relay);
-    const sub = instance.sub(mergedAndRemovedEmptyFilters, { skipVerification: this.skipVerification });
+    const sub = instance.sub(mergedAndRemovedEmptyFilters, {
+      skipVerification: this.skipVerification,
+    });
     let eventsBySub: Event[] | undefined = [];
     let minCreatedAt = Infinity;
     sub.on("event", (nostrEvent: NostrToolsEventWithId) => {
@@ -155,7 +157,7 @@ export class RelayPool {
         this,
         Array.from(this.relayByUrl.keys())
       );
-      if (this.keepSignature) {
+      if (!this.deleteSignatures) {
         event.sig = nostrEvent.sig;
       }
       this.eventCache?.addEvent(event);
