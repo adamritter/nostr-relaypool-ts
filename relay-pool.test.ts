@@ -27,7 +27,7 @@ beforeAll(() => {
 });
 
 beforeEach(() => {
-  relaypool = new RelayPool([], {noSubscriptionCache: false});
+  relaypool = new RelayPool([], {subscriptionCache: true});
   _relayServer.clear();
   _relayServer2.clear();
 });
