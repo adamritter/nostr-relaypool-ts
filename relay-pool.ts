@@ -135,7 +135,7 @@ export class RelayPool {
     filters: Filter[],
     onEvent: OnEvent,
     onEose?: OnEose,
-    dontStoreEventsBySub?: boolean
+    eventIds?: Set<string>
   ): Sub | undefined {
     const mergedAndRemovedEmptyFilters =
       mergeSimilarAndRemoveEmptyFilters(filters);
@@ -145,8 +145,10 @@ export class RelayPool {
     const instance = this.addOrGetRelay(relay);
     const sub = instance.sub(mergedAndRemovedEmptyFilters, {
       skipVerification: this.skipVerification,
+      eventIds,
     });
     let eventsBySub: Event[] | undefined = [];
+    let afterEose = false;
     let minCreatedAt = Infinity;
     sub.on("event", (nostrEvent: NostrToolsEventWithId) => {
       if (nostrEvent.created_at < minCreatedAt) {
@@ -161,14 +163,15 @@ export class RelayPool {
         event.sig = nostrEvent.sig;
       }
       this.eventCache?.addEvent(event);
-      if (onEose && !dontStoreEventsBySub) {
+      if (onEose) {
         eventsBySub?.push(event);
       }
-      onEvent(event, eventsBySub === undefined, relay);
+      onEvent(event, afterEose, relay);
     });
     sub.on("eose", () => {
       onEose?.(eventsBySub, relay, minCreatedAt);
       eventsBySub = undefined;
+      afterEose = true;
     });
 
     return sub;
@@ -196,8 +199,7 @@ export class RelayPool {
     onEvent: OnEvent,
     onEose?: OnEose,
     unsub: {unsubcb?: () => void; unsuboneosecb?: () => void} = {},
-    minMaxDelayms?: number,
-    dontStoreEventsBySub?: boolean
+    minMaxDelayms?: number
   ): () => void {
     if (filtersByRelay.size === 0) {
       return () => {};
@@ -235,12 +237,14 @@ export class RelayPool {
         }
       };
 
+      const eventIds = new Set<string>();
+
       const sub = this.#subscribeRelay(
         relay,
         filters,
         onEvent,
         subOnEose,
-        !onEose || dontStoreEventsBySub
+        eventIds
       );
       if (sub) {
         subHolder.sub = sub;
@@ -310,6 +314,7 @@ export class RelayPool {
       const cachedSubscription =
         this.subscriptionCache?.get(subscriptionCacheKey);
       if (cachedSubscription) {
+        console.log("using cached subscription");
         return cachedSubscription.sub(onEvent);
       }
     }
