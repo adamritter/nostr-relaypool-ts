@@ -43,7 +43,7 @@ export class RelayPool {
   filtersToSubscribe: FilterToSubscribe[] = [];
   timer?: ReturnType<typeof setTimeout>;
   externalGetEventById?: (id: string) => NostrToolsEventWithId | undefined;
-  dontLogSubscriptions?: boolean = false;
+  logSubscriptions?: boolean = false;
   dontAutoReconnect?: boolean = false;
   startTime: number = new Date().getTime();
   deleteSignatures?: boolean;
@@ -58,7 +58,7 @@ export class RelayPool {
     options: {
       noCache?: boolean;
       externalGetEventById?: (id: string) => NostrToolsEventWithId | undefined;
-      dontLogSubscriptions?: boolean;
+      logSubscriptions?: boolean;
       dontAutoReconnect?: boolean;
       noSubscriptionCache?: boolean;
       deleteSignatures?: boolean;
@@ -66,7 +66,7 @@ export class RelayPool {
     } = {}
   ) {
     this.externalGetEventById = options.externalGetEventById;
-    this.dontLogSubscriptions = options.dontLogSubscriptions;
+    this.logSubscriptions = options.logSubscriptions;
     this.dontAutoReconnect = options.dontAutoReconnect;
     this.deleteSignatures = options.deleteSignatures;
     this.skipVerification = options.skipVerification;
@@ -204,7 +204,7 @@ export class RelayPool {
     }
     // Merging here is done to make logging more readable.
     filtersByRelay = this.#mergeAndRemoveEmptyFiltersByRelay(filtersByRelay);
-    if (!this.dontLogSubscriptions) {
+    if (this.logSubscriptions) {
       console.log(
         "RelayPool at ",
         new Date().getTime() - this.startTime,

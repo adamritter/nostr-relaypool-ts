@@ -820,7 +820,6 @@ test.skip("pool memory usage", async () => {
   console.log("creating new relaypool");
   relaypool = new RelayPool(relayurls, {
     noCache: true,
-    dontLogSubscriptions: true,
   });
   relaypool.relayByUrl.forEach((relay) => {
     // @ts-ignore
