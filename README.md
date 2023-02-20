@@ -4,12 +4,10 @@ A Nostr RelayPool implementation in TypeScript using https://github.com/nbd-wtf/
 
 Its main goal is to make it simpler to build a client on top of it than just a dumb RelayPool implementation.
 
-# WARNING: From the relase of RelayPool 0.5.0 most of the features went from opt out to opt in (starting from something similar to SimplePool and adding features on a need basis)
+# WARNING: From the relase of RelayPool 0.5.0 most of the expensive features went from opt out to opt in (starting from something similar to SimplePool and adding features on a need basis)
 
-Features (all features are turned on by default, but can be turned off if needed):
+Features:
 
-- Caching events: every event searched by id or event of Metadata or Contacts kind are cached in memory.
-  Returning cached data can be turned off for each filter
 - Merging filters: separate filters with the same type of query (like asking for different authors with the same
   kinds) are automatically merged for every subscription request to decrease the number of filters,
   as the server usually handles it better.
@@ -25,6 +23,11 @@ Features (all features are turned on by default, but can be turned off if needed
   at this stage.
 - async getEventById can be used to get one event (which can be cached). It works together well with delayed subscriptions,
   as it's not good to send a subscription for just 1 event.
+- Compute smallest created_at (for continueuing subscriptions on relays). When continueuing a subscription, just pass
+  the specific relay.
+- Delete signatures (off by default)
+- Caching events (off by default): every event searched by id or event of Metadata or Contacts kind are cached in memory.
+  Returning cached data can be turned off for each filter
 
 # Installation:
 
