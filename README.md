@@ -4,6 +4,8 @@ A Nostr RelayPool implementation in TypeScript using https://github.com/nbd-wtf/
 
 Its main goal is to make it simpler to build a client on top of it than just a dumb RelayPool implementation.
 
+# WARNING: From the relase of RelayPool 0.5.0 most of the features went from opt out to opt in (starting from something similar to SimplePool and adding features on a need basis)
+
 Features (all features are turned on by default, but can be turned off if needed):
 
 - Caching events: every event searched by id or event of Metadata or Contacts kind are cached in memory.
@@ -35,8 +37,6 @@ npm i nostr-relaypool
 ```bash
 npm i nostr-relaypool ws
 ```
-
-# WARNING: With the relase of RelayPool 0.5.0 most of the features went from opt out to opt in (starting from something similar to SimplePool and adding features on a need basis)
 
 # Usage:
 
