@@ -32,9 +32,9 @@ export function groupFiltersByRelayAndEmitCacheHits(
     events = cachedEventsWithUpdatedFilters.events;
   }
   if (options.logAllEvents) {
-    onEvent = (event, isEose, url) => {
-      console.log("filters", filters, "onEvent", event, isEose, url);
-      onEvent(event, isEose, url);
+    const onEventNow = onEvent; // Nasty bug without introducing a new variable
+    onEvent = (event, afterEose, url) => {
+      onEventNow(event, afterEose, url);
     };
   }
   if (!options.allowDuplicateEvents) {

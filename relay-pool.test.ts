@@ -80,14 +80,14 @@ test("external geteventbyid", async () => {
   const event = await publishAndGetEvent(relayurls);
   var resolve1: (success: boolean) => void;
   var resolve2: (success: boolean) => void;
-  const promiseAll = Promise.all([
-    new Promise((resolve) => {
-      resolve1 = resolve;
-    }),
-    new Promise((resolve) => {
-      resolve2 = resolve;
-    }),
-  ]);
+  const promise1 = new Promise((resolve) => {
+    resolve1 = resolve;
+  });
+  const promise2 = new Promise((resolve) => {
+    resolve2 = resolve;
+  });
+
+  const promiseAll = Promise.all([promise1, promise2]);
   relaypool.close();
   relaypool = new RelayPool(relayurls, {
     externalGetEventById: (id) => {
@@ -135,8 +135,7 @@ test("empty", async () => {
     relayurls,
     (event, afterEose, url) => {},
     undefined,
-    (events, url, minCreatedAt) => {
-      expect(events).toHaveLength(0);
+    (url, minCreatedAt) => {
       expect(minCreatedAt).toBe(Infinity);
       expect(url).toBe(relayurls[0]);
       resolve2(true);
@@ -173,12 +172,8 @@ test("querying relaypool", async () => {
       resolve1(true);
     },
     undefined,
-    (events, url, minCreatedAt) => {
-      expect(events).toHaveLength(1);
-      if (events && events.length > 0) {
-        expect(events[0]).toHaveProperty("id", event.id);
-        expect(minCreatedAt).toBe(events[0].created_at);
-      }
+    (url, minCreatedAt) => {
+      expect(minCreatedAt).toBe(event.created_at);
       expect(url).toBe(relayurls[0]);
       resolve2(true);
     }
@@ -244,11 +239,8 @@ test("relay option in filter", async () => {
       resolve1(true);
     },
     undefined,
-    (events, url) => {
-      expect(events).toHaveLength(1);
-      if (events && events.length > 0) {
-        expect(events[0]).toHaveProperty("id", event.id);
-      }
+    (url, minCreatedAt) => {
+      expect(minCreatedAt).toBe(event.created_at);
       expect(url).toBe(relayurls[0]);
       resolve2(true);
     }
@@ -522,10 +514,14 @@ test("kind0", async () => {
           expect(event).toHaveProperty("kind", 0);
           expect(event).toHaveProperty("content", "nostr-tools test suite");
           resolve(true);
-        }
+        },
+        undefined,
+        undefined,
+        {logAllEvents: true}
       );
     })
   ).resolves.toEqual(true);
+  console.log("first on event done");
 
   const secondOnEvent = new Promise((resolve) => {
     relaypool.subscribe(

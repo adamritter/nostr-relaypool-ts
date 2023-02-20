@@ -36,6 +36,8 @@ npm i nostr-relaypool
 npm i nostr-relaypool ws
 ```
 
+# WARNING: With the relase of RelayPool 0.5.0 most of the features went from opt out to opt in (starting from something similar to SimplePool and adding features on a need basis)
+
 # Usage:
 
 ```typescript
@@ -116,8 +118,8 @@ author.text(console.log, 10, 0);
 # API documentation:
 
 ```typescript
-RelayPool(relays:string[] = [], options:{noCache?: boolean, dontLogSubscriptions?: boolean,
-          keepSignature?: boolean, skipVerification?: boolean} = {})
+RelayPool(relays:string[] = [], options:{useEventCache?: boolean, logSubscriptions?: boolean,
+          deleteSignatures?: boolean, skipVerification?: boolean} = {})
 ```
 
 RelayPool constructor connects to the given relays, but it doesn't determine which relays are used for specific subscriptions.
@@ -126,10 +128,10 @@ It caches all events and returns filtering id and 0 / 3 kinds with requested pub
 
 options:
 
-- noCache: turns off caching of events that is done by default.
-- dontLogSubscriptions: turns of logging subscriptions.
-  It's on by default as it's just 1 entry per RelayPool subscription, and it can help clients significantly
-- keepSignature: keep signatures for events
+- useEventCache: turns on caching of all events. WARNING: This makes memory grow without limit.
+- logSubscriptions: turns on logging subscriptions.
+  1 entry per RelayPool subscription, and it can help clients significantly
+- deleteSignatures: delete signatures for events
 - skipVerification: skip event signature verification
 
 <br/>
@@ -140,7 +142,7 @@ options:
                       onEvent: (event: Event & {id: string}, isAfterEose: boolean,
                           relayURL: string | undefined) => void,
                       maxDelayms?: number,
-                      onEose?: (events, relayURL, minCreatedAt) => void,
+                      onEose?: (relayURL, minCreatedAt) => void,
                       options: {allowDuplicateEvents?: boolean, allowOlderEvents?: boolean,
                           logAllEvents?: boolean} = {}
               ) : () => void
@@ -194,8 +196,7 @@ The first implementation uses matchFilter (O(n^2)) for redistributing events tha
 
 If it's used, the returned function doesn't do anything. It can't be used together with onEose.
 
-- onEose: called for each EOSE event received from a relay with the events
-  that were received from the particular server. Can't be used together with maxDelayms
+- onEose: called for each EOSE event received from a relay. Can't be used together with maxDelayms
 
   minCreatedAt contains the smallest created_at seen or Infinity if there were no events in the subscription.
 

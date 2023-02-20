@@ -13,11 +13,7 @@ import {CallbackReplayer} from "./callback-replayer";
 const unique = (arr: string[]) => [...new Set(arr)];
 
 export {type OnEvent} from "./on-event-filters";
-export type OnEose = (
-  eventsByThisSub: Event[] | undefined,
-  url: string,
-  minCreatedAt: number
-) => void;
+export type OnEose = (relayUrl: string, minCreatedAt: number) => void;
 
 export type FilterToSubscribe = [
   onEvent: OnEvent,
@@ -73,10 +69,8 @@ export class RelayPool {
     if (options.useEventCache) {
       this.eventCache = new EventCache();
     }
-    // Don't enable subscription cache by default yet
     if (options.subscriptionCache) {
       this.subscriptionCache = new Map();
-      console.log("subscription cache enabled");
     }
     if (relays) {
       for (const relay of unique(relays)) {
@@ -147,7 +141,6 @@ export class RelayPool {
       skipVerification: this.skipVerification,
       eventIds,
     });
-    let eventsBySub: Event[] | undefined = [];
     let afterEose = false;
     let minCreatedAt = Infinity;
     sub.on("event", (nostrEvent: NostrToolsEventWithId) => {
@@ -163,14 +156,10 @@ export class RelayPool {
         event.sig = nostrEvent.sig;
       }
       this.eventCache?.addEvent(event);
-      if (onEose) {
-        eventsBySub?.push(event);
-      }
       onEvent(event, afterEose, relay);
     });
     sub.on("eose", () => {
-      onEose?.(eventsBySub, relay, minCreatedAt);
-      eventsBySub = undefined;
+      onEose?.(relay, minCreatedAt);
       afterEose = true;
     });
 
@@ -224,9 +213,9 @@ export class RelayPool {
     };
     for (const [relay, filters] of filtersByRelay) {
       let subHolder: {sub?: Sub} = {};
-      const subOnEose: OnEose = (events, url, minCreatedAt) => {
+      const subOnEose: OnEose = (url, minCreatedAt) => {
         if (onEose) {
-          onEose(events, url, minCreatedAt);
+          onEose(url, minCreatedAt);
         }
         if (unsuboneosecbcalled) {
           subHolder.sub?.unsub();
@@ -314,7 +303,6 @@ export class RelayPool {
       const cachedSubscription =
         this.subscriptionCache?.get(subscriptionCacheKey);
       if (cachedSubscription) {
-        console.log("using cached subscription");
         return cachedSubscription.sub(onEvent);
       }
     }

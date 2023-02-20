@@ -10,6 +10,7 @@
     "esModuleInterop": true,
     "emitDeclarationOnly": true,
     "outDir": "dist",
-    "rootDir": "."
+    "rootDir": ".",
+    "inlineSourceMap": true
   }
 }
