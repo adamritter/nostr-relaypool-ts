@@ -172,6 +172,9 @@ class RelayC {
 
           const id = data[1];
           const event = data[2];
+          if (!this.openSubs[id]) {
+            return;
+          }
           if (this.openSubs[id].eventIds?.has(eventId)) {
             return;
           }
