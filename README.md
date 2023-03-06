@@ -147,7 +147,7 @@ options:
                       maxDelayms?: number,
                       onEose?: (relayURL, minCreatedAt) => void,
                       options: {allowDuplicateEvents?: boolean, allowOlderEvents?: boolean,
-                          logAllEvents?: boolean} = {}
+                          logAllEvents?: boolean, unsubscribeOnEose: boolean} = {}
               ) : () => void
 ```
 
@@ -213,6 +213,9 @@ If it's used, the returned function doesn't do anything. It can't be used togeth
 
   - logAllEvents: Log all events that are sent back to separate subscriptions. It can be a lot of events,
     so this option is only advised for application development, especially debugging.
+
+  - unsubscribeOnEose: The most important option to use for past events with different queries (for example subscribing when the ids are known).
+    the number of subscriptions on relays are limited, this option closes subscription on each relay when the relay sends EOSE event.
 
 Return value:
 
