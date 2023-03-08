@@ -307,9 +307,13 @@ export class RelayPool {
         allAuthors.add(author);
       }
     }
-    const allRelays: Set<string> = new Set();
+    const promises = [];
     for (const author of allAuthors) {
-      let relays = await this.writeRelays?.get(author);
+      promises.push(this.writeRelays?.get(author));
+    }
+    const allRelays: Set<string> = new Set();
+    for (const promise of promises) {
+      let relays = await promise;
       for (let relay of relays) {
         allRelays.add(relay);
       }
@@ -434,5 +438,48 @@ export class RelayPool {
           [url, relay.status] as [string, number]
       )
       .sort();
+  }
+  setWriteRelaysForPubKey(pubkey: string, writeRelays: string[]) {
+    this.writeRelays.data.set(pubkey, writeRelays);
+  }
+  subscribeReferencedEvents(
+    event: NostrToolsEvent,
+    onEvent: OnEvent,
+    maxDelayms?: number,
+    onEose?: OnEose,
+    options: SubscriptionOptions = {}
+  ): () => void {
+    let ids: string[] = [];
+    let authors: string[] = [];
+
+    for (const tag of event.tags) {
+      if (tag[0] === "p") {
+        const pubkey = tag[1];
+        if (pubkey.length !== 64) {
+          console.log("bad pubkey", pubkey, tag);
+          continue;
+        }
+        authors.push(pubkey);
+      }
+      if (tag[0] === "e") {
+        const id = tag[1];
+        ids.push(id);
+      }
+    }
+    if (ids.length === 0) {
+      return () => {};
+    }
+    if (authors.length === 0) {
+      console.error("No authors for ids in event", event);
+      return () => {};
+    }
+    return this.subscribe(
+      [{ids, authors}],
+      undefined,
+      onEvent,
+      maxDelayms,
+      onEose,
+      options
+    );
   }
 }

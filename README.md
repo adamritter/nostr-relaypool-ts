@@ -246,6 +246,16 @@ RelayPool::onnotice(cb: (url: string, msg: string) => void)
 
 RelayPool::onerror(cb: (url: string, msg: string) => void)
 
+RelayPool::setWriteRelaysForPubKey(pubkey: string, writeRelays: string[])
+
+RelayPool::subscribeReferencedEvents(
+    event: NostrToolsEvent,
+    onEvent: OnEvent,
+    maxDelayms?: number,
+    onEose?: OnEose,
+    options: SubscriptionOptions = {}
+  ): () => void
+
 new Author(relayPool: RelayPool, relays: string[], pubkey: string)
 
 Author::metaData(cb: (event: Event) => void, maxDelayms: number): () => void

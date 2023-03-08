@@ -8,18 +8,20 @@ export class WriteRelaysPerPubkey {
     this.servers = servers || ["https://us.rbr.bio", "https://eu.rbr.bio"];
   }
 
-  async get(pubkey: string) {
-    if (this.data.has(pubkey)) {
-      return Promise.resolve(this.data.get(pubkey));
+  async get(pubkey: string): Promise<string[]> {
+    let value = this.data.get(pubkey);
+    if (value) {
+      return Promise.resolve(value);
     }
-    if (this.promises.has(pubkey)) {
-      return this.promises.get(pubkey);
+    const promise = this.promises.get(pubkey);
+    if (promise) {
+      return promise;
     }
     const rs = [];
     for (let server of this.servers) {
       rs.push(fetchWriteRelays(server, pubkey));
     }
-    const r = Promise.race(rs);
+    const r = firstGoodPromise(rs);
     r.then((x) => {
       this.data.set(pubkey, x);
       this.promises.delete(pubkey);
@@ -29,7 +31,7 @@ export class WriteRelaysPerPubkey {
   }
 }
 
-function fetchWriteRelays(server: string, pubkey: string) {
+function fetchWriteRelays(server: string, pubkey: string): Promise<string[]> {
   const url = `${server}/${pubkey}/writerelays.json`;
   return fetchJSON(url);
 }
@@ -40,4 +42,18 @@ async function fetchJSON(url: string) {
     .catch((e) => {
       throw new Error("error fetching " + url + " " + e);
     });
+}
+
+function firstGoodPromise<T>(promises: Promise<T>[]): Promise<T> {
+  return new Promise((resolve, reject) => {
+    let rejects: any[] = [];
+    promises.forEach((p) => {
+      p.then(resolve).catch((rej) => {
+        rejects.push(rej);
+        if (rejects.length === promises.length) {
+          reject(rejects);
+        }
+      });
+    });
+  });
 }
