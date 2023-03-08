@@ -141,7 +141,7 @@ options:
 
 ```typescript
  RelayPool::subscribe(filters: Filter & {relay?: string, noCache?: boolean},
-                      relays: string[],
+                      relays: string[] | undefined,
                       onEvent: (event: Event & {id: string}, isAfterEose: boolean,
                           relayURL: string | undefined) => void,
                       maxDelayms?: number,
@@ -177,6 +177,9 @@ new data is required from those relays.
 
 - relays: Events for filters that have no relay field set will be requested from
   all the specified relays.
+
+  If relays is not set and authors is set for all filters, RelayPool will get write relays for all authors in the subscription
+  and send the subscription to those relays.
 
 - onEvent:
 

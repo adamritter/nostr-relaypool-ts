@@ -9,6 +9,7 @@ import {
   groupFiltersByRelayAndEmitCacheHits,
 } from "./group-filters-by-relay";
 import {CallbackReplayer} from "./callback-replayer";
+import {WriteRelaysPerPubkey} from "./write-relays";
 
 const unique = (arr: string[]) => [...new Set(arr)];
 
@@ -48,6 +49,7 @@ export class RelayPool {
     CallbackReplayer<[Event, boolean, string | undefined], OnEvent>
   >;
   skipVerification?: boolean;
+  writeRelays: WriteRelaysPerPubkey;
 
   constructor(
     relays?: string[],
@@ -66,6 +68,7 @@ export class RelayPool {
     this.dontAutoReconnect = options.dontAutoReconnect;
     this.deleteSignatures = options.deleteSignatures;
     this.skipVerification = options.skipVerification;
+    this.writeRelays = new WriteRelaysPerPubkey();
     if (options.useEventCache) {
       this.eventCache = new EventCache();
     }
@@ -286,9 +289,44 @@ export class RelayPool {
     }
   }
 
+  async #getRelaysAndSubscribe(
+    filters: (Filter & {relay?: string; noCache?: boolean})[],
+    onEvent: OnEvent,
+    maxDelayms?: number,
+    onEose?: OnEose,
+    options: SubscriptionOptions = {}
+  ) {
+    const allAuthors: Set<string> = new Set();
+    for (const filter of filters) {
+      if (!filter.authors) {
+        throw new Error(
+          "Authors must be specified if no relays are subscribed"
+        );
+      }
+      for (const author of filter.authors) {
+        allAuthors.add(author);
+      }
+    }
+    const allRelays: Set<string> = new Set();
+    for (const author of allAuthors) {
+      let relays = await this.writeRelays?.get(author);
+      for (let relay of relays) {
+        allRelays.add(relay);
+      }
+    }
+    return this.subscribe(
+      filters,
+      Array.from(allRelays),
+      onEvent,
+      maxDelayms,
+      onEose,
+      options
+    );
+  }
+
   subscribe(
     filters: (Filter & {relay?: string; noCache?: boolean})[],
-    relays: string[],
+    relays: string[] | undefined,
     onEvent: OnEvent,
     maxDelayms?: number,
     onEose?: OnEose,
@@ -296,6 +334,20 @@ export class RelayPool {
   ): () => void {
     if (maxDelayms !== undefined && onEose) {
       throw new Error("maxDelayms and onEose cannot be used together");
+    }
+    if (relays === undefined) {
+      const promise = this.#getRelaysAndSubscribe(
+        filters,
+        onEvent,
+        maxDelayms,
+        onEose,
+        options
+      );
+      return () => {
+        promise.then((x) => {
+          x();
+        });
+      };
     }
     let subscriptionCacheKey: string | undefined;
     if (options.unsubscribeOnEose && !onEose) {
@@ -346,7 +398,9 @@ export class RelayPool {
         (event) => {
           resolve(event);
         },
-        maxDelayms
+        maxDelayms,
+        undefined
+        // {unsubscribeOnEose: true}
       );
     });
   }
