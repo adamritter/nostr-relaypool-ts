@@ -845,24 +845,25 @@ test("delayfiltering", async () => {
   expect(_relayServer.totalSubscriptions).toEqual(1);
   relaypool = new RelayPool([], {});
 
-  const p1 = new Promise((resolve) => {
-    relaypool.subscribe(
-      [{ids: [event.id], authors: [event.pubkey]}],
-      relayurls,
-      (event) => {
-        resolve(true);
-      },
-      1,
-      undefined,
-      {unsubscribeOnEose: true}
-    );
-  });
   const p2 = new Promise((resolve) => {
     relaypool.subscribe(
       [{ids: ["notfound"], authors: [event.pubkey]}],
       relayurls,
       (event) => {
         resolve(false);
+      },
+      1,
+      undefined,
+      {unsubscribeOnEose: true}
+    );
+  });
+
+  const p1 = new Promise((resolve) => {
+    relaypool.subscribe(
+      [{ids: [event.id], authors: [event.pubkey]}],
+      relayurls,
+      (event) => {
+        resolve(true);
       },
       1,
       undefined,

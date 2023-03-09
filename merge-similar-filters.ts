@@ -54,7 +54,7 @@ export function mergeSimilarAndRemoveEmptyFilters(filters: Filter[]): Filter[] {
           indexByFilter.set(index_by, r.length);
         }
       }
-      r.push(filter);
+      r.push({...filter});
     }
   }
   return r;
