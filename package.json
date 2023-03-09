@@ -1,6 +1,6 @@
 {
   "name": "nostr-relaypool",
-  "version": "0.5.10",
+  "version": "0.5.11",
   "description": "A Nostr RelayPool implementation in TypeScript using only nostr-tools library as a dependency.",
   "type": "module",
   "repository": {

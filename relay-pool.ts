@@ -448,6 +448,9 @@ export class RelayPool {
   setWriteRelaysForPubKey(pubkey: string, writeRelays: string[]) {
     this.writeRelays.data.set(pubkey, writeRelays);
   }
+  setCachedMetadata(pubkey: string, metadata: NostrToolsEventWithId) {
+    this.metadataCache.data.set(pubkey, metadata);
+  }
   subscribeReferencedEvents(
     event: NostrToolsEvent,
     onEvent: OnEvent,
