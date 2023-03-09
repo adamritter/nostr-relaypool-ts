@@ -748,6 +748,7 @@ test("unsubscribeOnEose", async () => {
 
 const filtersByAuthor = (event: Event) => [{authors: [event.pubkey]}];
 const filtersByKind = (event: Event) => [{kinds: [event.kind]}];
+const filtersById = (event: Event & {id: string}) => [{ids: [event.id]}];
 const sleepms = (timeoutMs: number) =>
   new Promise((resolve) => setTimeout(() => resolve(true), timeoutMs));
 
@@ -829,4 +830,48 @@ test.skip("pool memory usage", async () => {
       });
     });
   }
+});
+
+test("delayfiltering", async () => {
+  let event = createSignedEvent();
+  relaypool.publish(event, relayurls);
+  expect(_relayServer.totalSubscriptions).toEqual(0);
+
+  await new Promise((resolve) => {
+    relaypool.subscribe(filtersByKind(event), relayurls, (event) => {
+      resolve(true);
+    });
+  });
+  expect(_relayServer.totalSubscriptions).toEqual(1);
+  relaypool = new RelayPool([], {});
+
+  const p1 = new Promise((resolve) => {
+    relaypool.subscribe(
+      [{ids: [event.id], authors: [event.pubkey]}],
+      relayurls,
+      (event) => {
+        resolve(true);
+      },
+      1,
+      undefined,
+      {unsubscribeOnEose: true}
+    );
+  });
+  const p2 = new Promise((resolve) => {
+    relaypool.subscribe(
+      [{ids: ["notfound"], authors: [event.pubkey]}],
+      relayurls,
+      (event) => {
+        resolve(false);
+      },
+      1,
+      undefined,
+      {unsubscribeOnEose: true}
+    );
+  });
+  await p1;
+  expect(await p1).toEqual(true);
+  expect(await Promise.race([p2, sleepms(10).then(() => true)])).toEqual(true);
+  await sleepms(10);
+  expect(_relayServer.totalSubscriptions).toEqual(2);
 });
