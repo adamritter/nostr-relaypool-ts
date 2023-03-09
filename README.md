@@ -256,6 +256,16 @@ RelayPool::subscribeReferencedEvents(
     options: SubscriptionOptions = {}
   ): () => void
 
+RelayPool::fetchAndCacheMetadata(pubkey: string): Promise<NostrToolsEventWithId>
+
+RelayPool::subscribeReferencedEventsAndPrefetchMetadata(
+    event: NostrToolsEvent,
+    onEvent: OnEvent,
+    maxDelayms?: number,
+    onEose?: OnEose,
+    options: SubscriptionOptions = {}
+  ): () => void
+
 new Author(relayPool: RelayPool, relays: string[], pubkey: string)
 
 Author::metaData(cb: (event: Event) => void, maxDelayms: number): () => void

@@ -10,12 +10,16 @@ import {
 } from "./group-filters-by-relay";
 import {CallbackReplayer} from "./callback-replayer";
 import {WriteRelaysPerPubkey} from "./write-relays";
+import {MetadataCache} from "./metadata-cache";
 
 const unique = (arr: string[]) => [...new Set(arr)];
 
 export {type OnEvent} from "./on-event-filters";
 export type OnEose = (relayUrl: string, minCreatedAt: number) => void;
-
+export type OnEventAndMetadata = (
+  event: NostrToolsEventWithId,
+  metadata: NostrToolsEventWithId
+) => void;
 export type FilterToSubscribe = [
   onEvent: OnEvent,
   filtersByRelay: Map<string, Filter[]>,
@@ -50,6 +54,7 @@ export class RelayPool {
   >;
   skipVerification?: boolean;
   writeRelays: WriteRelaysPerPubkey;
+  metadataCache: MetadataCache;
 
   constructor(
     relays?: string[],
@@ -69,6 +74,7 @@ export class RelayPool {
     this.deleteSignatures = options.deleteSignatures;
     this.skipVerification = options.skipVerification;
     this.writeRelays = new WriteRelaysPerPubkey();
+    this.metadataCache = new MetadataCache();
     if (options.useEventCache) {
       this.eventCache = new EventCache();
     }
@@ -476,6 +482,36 @@ export class RelayPool {
     return this.subscribe(
       [{ids, authors}],
       undefined,
+      onEvent,
+      maxDelayms,
+      onEose,
+      options
+    );
+  }
+
+  fetchAndCacheMetadata(pubkey: string): Promise<NostrToolsEventWithId> {
+    return this.metadataCache.get(pubkey);
+  }
+
+  subscribeReferencedEventsAndPrefetchMetadata(
+    event: NostrToolsEvent,
+    onEvent: OnEvent,
+    maxDelayms?: number,
+    onEose?: OnEose,
+    options: SubscriptionOptions = {}
+  ): () => void {
+    for (const tag of event.tags) {
+      if (tag[0] === "p") {
+        const pubkey = tag[1];
+        if (pubkey.length !== 64) {
+          console.log("bad pubkey", pubkey, tag);
+          continue;
+        }
+        this.fetchAndCacheMetadata(pubkey);
+      }
+    }
+    return this.subscribeReferencedEvents(
+      event,
       onEvent,
       maxDelayms,
       onEose,
