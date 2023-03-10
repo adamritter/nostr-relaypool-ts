@@ -314,12 +314,21 @@ export class RelayPool {
       }
     }
     const promises = [];
+    const allAuthorsArray = []
     for (const author of allAuthors) {
       promises.push(this.writeRelays?.get(author));
+      allAuthorsArray.push(author)
     }
     const allRelays: Set<string> = new Set();
+    let i=0;
     for (const promise of promises) {
+      const author = allAuthorsArray[i]
+      i+=1;
       let relays = await promise;
+      if (!Array.isArray(relays)) {
+        console.error("Couldn't load relays for author ", author)
+        continue
+      }
       for (let relay of relays) {
         allRelays.add(relay);
       }
