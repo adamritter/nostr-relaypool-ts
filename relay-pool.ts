@@ -95,6 +95,7 @@ export class RelayPool {
     }
     const relayInstance = relayInit(
       relay,
+      // @ts-ignore
       this.externalGetEventById
         ? this.externalGetEventById
         : this.eventCache
@@ -314,20 +315,20 @@ export class RelayPool {
       }
     }
     const promises = [];
-    const allAuthorsArray = []
+    const allAuthorsArray = [];
     for (const author of allAuthors) {
       promises.push(this.writeRelays?.get(author));
-      allAuthorsArray.push(author)
+      allAuthorsArray.push(author);
     }
     const allRelays: Set<string> = new Set();
-    let i=0;
+    let i = 0;
     for (const promise of promises) {
-      const author = allAuthorsArray[i]
-      i+=1;
+      const author = allAuthorsArray[i];
+      i += 1;
       let relays = await promise;
       if (!Array.isArray(relays)) {
-        console.error("Couldn't load relays for author ", author)
-        continue
+        console.error("Couldn't load relays for author ", author);
+        continue;
       }
       for (let relay of relays) {
         allRelays.add(relay);

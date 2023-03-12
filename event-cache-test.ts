@@ -12,6 +12,7 @@ describe("EventCache", () => {
   beforeEach(() => {
     eventCache = new EventCache();
     event = new Event(
+      // @ts-ignore
       {
         id: "1",
         pubkey: "pk",

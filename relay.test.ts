@@ -5,9 +5,10 @@ import {
   generatePrivateKey,
   getEventHash,
   getPublicKey,
-  type Relay,
   type Event,
 } from "nostr-tools";
+
+import type {Relay} from "./relay";
 
 import {relayInit} from "./relay";
 import {InMemoryRelayServer} from "./in-memory-relay-server";
@@ -64,6 +65,7 @@ async function publishAndGetEvent(
   // @ts-ignore
   event.sig = signEvent(event, sk);
   // console.log("publishing event", event);
+  // @ts-ignore
   relay.publish(event);
   return new Promise((resolve) =>
     relay
@@ -144,7 +146,7 @@ test("listening (twice) and publishing", async () => {
   event.id = getEventHash(event);
   // @ts-ignore
   event.sig = signEvent(event, sk);
-
+  // @ts-ignore
   relay.publish(event);
   return expect(
     Promise.all([
@@ -189,6 +191,7 @@ test("two subscriptions", async () => {
         expect(event).toHaveProperty("content", "nostr-tools test suite");
         resolve(true);
       });
+      // @ts-ignore
       relay.publish(event);
     })
   ).resolves.toEqual(true);
@@ -208,6 +211,7 @@ test("two subscriptions", async () => {
         expect(event).toHaveProperty("content", "nostr-tools test suite");
         resolve(true);
       });
+      // @ts-ignore
       relay.publish(event);
     })
   ).resolves.toEqual(true);

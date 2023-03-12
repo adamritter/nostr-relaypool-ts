@@ -13,6 +13,7 @@ export class EventDemultiplexer {
     const filterAndOnEvent = this.filterAndOnEventByEvent.get(eventKey);
     if (filterAndOnEvent) {
       for (const [filter, onEvent] of filterAndOnEvent) {
+        // @ts-ignore
         if (matchFilter(filter, event)) {
           onEvent(event, afterEose, url);
         }

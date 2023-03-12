@@ -14,6 +14,7 @@ export class Event implements NostrToolsEventWithId {
   content: string;
   relayPool: RelayPool;
   relays: string[];
+  // @ts-ignore
   sig?: string;
 
   constructor(
@@ -51,6 +52,7 @@ export class Event implements NostrToolsEventWithId {
         r.push(
           this.relayPool
             .getEventById(tag[1], relays, maxDelayms)
+            // @ts-ignore
             .then((e) => new Event(e, this.relayPool, this.relays))
         );
       }
