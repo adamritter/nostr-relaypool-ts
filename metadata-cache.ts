@@ -1,3 +1,4 @@
+// Don't use, use NewEventCache instead
 import {NostrToolsEventWithId} from "./event";
 
 export class MetadataCache {

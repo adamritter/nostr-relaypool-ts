@@ -10,7 +10,7 @@ import {
 } from "./group-filters-by-relay";
 import {CallbackReplayer} from "./callback-replayer";
 import {WriteRelaysPerPubkey} from "./write-relays";
-import {MetadataCache} from "./metadata-cache";
+import {NewestEventCache} from "./newest-event-cache";
 
 const unique = (arr: string[]) => [...new Set(arr)];
 
@@ -54,7 +54,7 @@ export class RelayPool {
   >;
   skipVerification?: boolean;
   writeRelays: WriteRelaysPerPubkey;
-  metadataCache: MetadataCache;
+  metadataCache: NewestEventCache;
 
   constructor(
     relays?: string[],
@@ -74,7 +74,7 @@ export class RelayPool {
     this.deleteSignatures = options.deleteSignatures;
     this.skipVerification = options.skipVerification;
     this.writeRelays = new WriteRelaysPerPubkey();
-    this.metadataCache = new MetadataCache();
+    this.metadataCache = new NewestEventCache(0, this);
     if (options.useEventCache) {
       this.eventCache = new EventCache();
     }

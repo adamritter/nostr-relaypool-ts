@@ -168,6 +168,9 @@ class RelayC {
     if (data.length >= 1) {
       switch (data[0]) {
         case "EVENT":
+          if (this.logging) {
+            console.log(data);
+          }
           if (data.length !== 3) return; // ignore empty or malformed EVENT
 
           const id = data[1];
