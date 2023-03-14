@@ -38,12 +38,15 @@ export class NewestEventCache {
         },
         undefined,
         (relayUrl) => {
-          tries++;
+          if (this.relays.includes(relayUrl)) {
+            tries++;
+          }
           if (tries === this.relays.length) {
+            this.promises.delete(pubkey);
             reject(
-              `Can't find data for ${pubkey} with kind ${
+              `Can't find data2 for ${pubkey} with kind ${
                 this.kind
-              } on RelayInfoServers ${this.relays.join(",")}`
+              } on RelayInfoServers ${this.relays.join(",")}, ${tries} tries`
             );
           }
         }
