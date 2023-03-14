@@ -40,7 +40,11 @@ export class NewestEventCache {
         (relayUrl) => {
           tries++;
           if (tries === this.relays.length) {
-            reject();
+            reject(
+              `Can't find data for ${pubkey} with kind ${
+                this.kind
+              } on RelayInfoServers ${this.relays.join(",")}`
+            );
           }
         }
       );
