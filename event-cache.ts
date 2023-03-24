@@ -1,5 +1,4 @@
-import {Filter, Kind} from "nostr-tools";
-import {Event} from "./event";
+import {Filter, Kind, Event} from "nostr-tools";
 
 export class EventCache {
   eventsById: Map<string, Event> = new Map();

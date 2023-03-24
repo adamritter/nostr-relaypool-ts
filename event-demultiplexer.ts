@@ -1,6 +1,5 @@
-import {Filter, matchFilter} from "nostr-tools";
+import {Filter, matchFilter, Event} from "nostr-tools";
 import {OnEvent} from "./on-event-filters";
-import {Event} from "./event";
 
 export class EventDemultiplexer {
   filterAndOnEventByEvent: Map<string, [Filter, OnEvent][]> = new Map();

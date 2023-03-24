@@ -1,12 +1,19 @@
 /* eslint-env jest */
 
-import {Filter, matchFilter} from "nostr-tools";
+import {Filter, matchFilter, Event, UnsignedEvent} from "nostr-tools";
 import {EventDemultiplexer} from "./event-demultiplexer";
-import {Event, NostrToolsEventWithId} from "./event";
-import {RelayPool} from "./relay-pool";
 
-let eventFrom = (event: NostrToolsEventWithId) =>
-  new Event(event, new RelayPool(), []);
+let eventFrom = (event: UnsignedEvent & {id: string}) => {
+  return {
+    id: event.id,
+    kind: event.kind,
+    pubkey: event.pubkey,
+    tags: event.tags,
+    content: event.content,
+    created_at: event.created_at,
+    sig: "",
+  };
+};
 describe("EventDemultiplexer", () => {
   let demultiplexer: EventDemultiplexer;
 
@@ -28,14 +35,15 @@ describe("EventDemultiplexer", () => {
     const onEvent = jest.fn();
     demultiplexer.subscribe(filters, onEvent);
     // @ts-ignore
-    const event: Event = eventFrom({
+    const event: Event = {
       id: "123",
       kind: 1,
       pubkey: "abc",
       tags: [],
       content: "",
       created_at: 0,
-    });
+      sig: "",
+    };
     demultiplexer.onEvent(event, true, "https://example.com");
     expect(onEvent).toHaveBeenCalledWith(event, true, "https://example.com");
   });
@@ -45,14 +53,15 @@ describe("EventDemultiplexer", () => {
     const onEvent = jest.fn();
     demultiplexer.subscribe(filters, onEvent);
     // @ts-ignore
-    const event: Event = eventFrom({
+    const event: Event = {
       id: "123",
       kind: 1,
       pubkey: "abc",
       tags: [],
       content: "",
       created_at: 0,
-    });
+      sig: "",
+    };
     demultiplexer.onEvent(event, true, "https://example.com");
     expect(onEvent).not.toHaveBeenCalled();
   });

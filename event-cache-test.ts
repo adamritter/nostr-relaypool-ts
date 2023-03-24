@@ -1,9 +1,7 @@
 /* eslint-env jest */
 
-import {Kind} from "nostr-tools";
-import {Event} from "./event";
+import {Kind, Event} from "nostr-tools";
 import {EventCache} from "./event-cache";
-import {RelayPool} from "./relay-pool";
 
 describe("EventCache", () => {
   let eventCache: EventCache;
@@ -11,19 +9,15 @@ describe("EventCache", () => {
 
   beforeEach(() => {
     eventCache = new EventCache();
-    event = new Event(
-      // @ts-ignore
-      {
-        id: "1",
-        pubkey: "pk",
-        kind: Kind.Metadata,
-        created_at: 0,
-        tags: [],
-        content: "",
-      },
-      new RelayPool(),
-      []
-    );
+    event = {
+      id: "1",
+      pubkey: "pk",
+      kind: Kind.Metadata,
+      created_at: 0,
+      tags: [],
+      content: "",
+      sig: "",
+    };
   });
 
   test("addEvent should add event to eventsById", () => {

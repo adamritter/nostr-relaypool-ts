@@ -1,9 +1,8 @@
-// Don't use, use NewEventCache instead
-import {NostrToolsEventWithId} from "./event";
+import {Event} from "nostr-tools";
 
 export class MetadataCache {
-  data: Map<string, NostrToolsEventWithId>;
-  promises: Map<string, Promise<NostrToolsEventWithId>>;
+  data: Map<string, Event>;
+  promises: Map<string, Promise<Event>>;
   servers: string[];
   constructor(servers?: string[]) {
     this.data = new Map();
@@ -11,7 +10,7 @@ export class MetadataCache {
     this.servers = servers || ["https://us.rbr.bio", "https://eu.rbr.bio"];
   }
 
-  async get(pubkey: string): Promise<NostrToolsEventWithId> {
+  async get(pubkey: string): Promise<Event> {
     let value = this.data.get(pubkey);
     if (value) {
       return Promise.resolve(value);

@@ -1,6 +1,6 @@
 {
   "name": "nostr-relaypool",
-  "version": "0.5.18",
+  "version": "0.6.0",
   "description": "A Nostr RelayPool implementation in TypeScript using only nostr-tools library as a dependency.",
   "type": "module",
   "repository": {
@@ -16,7 +16,7 @@
   "dependencies": {
     "@jest/source-map": "^29.4.3",
     "isomorphic-ws": "^5.0.0",
-    "nostr-tools": "^1.7.4",
+    "nostr-tools": "^1.7.5",
     "safe-stable-stringify": "^2.4.2"
   },
   "keywords": [

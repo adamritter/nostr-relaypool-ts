@@ -1,9 +1,9 @@
-import {Filter, getEventHash, Sub} from "nostr-tools";
+import {Filter, Sub, Event} from "nostr-tools";
 import {mergeSimilarAndRemoveEmptyFilters} from "./merge-similar-filters";
 import {type Relay, relayInit} from "./relay";
-import {type OnEvent} from "./on-event-filters";
+import {OnEventObject, type OnEvent} from "./on-event-filters";
 import {EventCache} from "./event-cache";
-import {Event, NostrToolsEvent, NostrToolsEventWithId} from "./event";
+import {EventObject} from "./event";
 import {
   batchFiltersByRelay,
   groupFiltersByRelayAndEmitCacheHits,
@@ -14,12 +14,9 @@ import {NewestEventCache} from "./newest-event-cache";
 
 const unique = (arr: string[]) => [...new Set(arr)];
 
-export {type OnEvent} from "./on-event-filters";
+export {type OnEvent, type OnEventObject} from "./on-event-filters";
 export type OnEose = (relayUrl: string, minCreatedAt: number) => void;
-export type OnEventAndMetadata = (
-  event: NostrToolsEventWithId,
-  metadata: NostrToolsEventWithId
-) => void;
+export type OnEventAndMetadata = (event: Event, metadata: Event) => void;
 export type FilterToSubscribe = [
   onEvent: OnEvent,
   filtersByRelay: Map<string, Filter[]>,
@@ -43,7 +40,7 @@ export class RelayPool {
   minMaxDelayms: number = Infinity;
   filtersToSubscribe: FilterToSubscribe[] = [];
   timer?: ReturnType<typeof setTimeout>;
-  externalGetEventById?: (id: string) => NostrToolsEventWithId | undefined;
+  externalGetEventById?: (id: string) => Event | undefined;
   logSubscriptions?: boolean = false;
   dontAutoReconnect?: boolean = false;
   startTime: number = new Date().getTime();
@@ -55,12 +52,13 @@ export class RelayPool {
   skipVerification?: boolean;
   writeRelays: WriteRelaysPerPubkey;
   metadataCache: NewestEventCache;
+  contactListCache: NewestEventCache;
 
   constructor(
     relays?: string[],
     options: {
       useEventCache?: boolean;
-      externalGetEventById?: (id: string) => NostrToolsEventWithId | undefined;
+      externalGetEventById?: (id: string) => Event | undefined;
       logSubscriptions?: boolean;
       dontAutoReconnect?: boolean;
       subscriptionCache?: boolean;
@@ -75,6 +73,7 @@ export class RelayPool {
     this.skipVerification = options.skipVerification;
     this.writeRelays = new WriteRelaysPerPubkey();
     this.metadataCache = new NewestEventCache(0, this);
+    this.contactListCache = new NewestEventCache(3, this);
     if (options.useEventCache) {
       this.eventCache = new EventCache();
     }
@@ -95,7 +94,6 @@ export class RelayPool {
     }
     const relayInstance = relayInit(
       relay,
-      // @ts-ignore
       this.externalGetEventById
         ? this.externalGetEventById
         : this.eventCache
@@ -153,15 +151,11 @@ export class RelayPool {
     });
     let afterEose = false;
     let minCreatedAt = Infinity;
-    sub.on("event", (nostrEvent: NostrToolsEventWithId) => {
+    sub.on("event", (nostrEvent: Event) => {
       if (nostrEvent.created_at < minCreatedAt) {
         minCreatedAt = nostrEvent.created_at;
       }
-      let event = new Event(
-        nostrEvent,
-        this,
-        Array.from(this.relayByUrl.keys())
-      );
+      let event = nostrEvent;
       if (!this.deleteSignatures) {
         event.sig = nostrEvent.sig;
       }
@@ -344,6 +338,19 @@ export class RelayPool {
     );
   }
 
+  subscribeEventObject(
+    filters: (Filter & {relay?: string; noCache?: boolean})[],
+    relays: string[] | undefined,
+    onEventObject: OnEventObject,
+    maxDelayms?: number,
+    onEose?: OnEose,
+    options: SubscriptionOptions = {}
+  ): () => void {
+    return this.subscribe(filters, relays, (event, afterEose, url) =>
+      onEventObject(new EventObject(event, this, relays), afterEose, url)
+    );
+  }
+
   subscribe(
     filters: (Filter & {relay?: string; noCache?: boolean})[],
     relays: string[] | undefined,
@@ -406,6 +413,16 @@ export class RelayPool {
     }
   }
 
+  async getEventObjectById(
+    id: string,
+    relays: string[],
+    maxDelayms: number
+  ): Promise<EventObject> {
+    return this.getEventById(id, relays, maxDelayms).then(
+      (event) => new EventObject(event, this, relays)
+    );
+  }
+
   async getEventById(
     id: string,
     relays: string[],
@@ -425,11 +442,10 @@ export class RelayPool {
     });
   }
 
-  publish(event: NostrToolsEvent, relays: string[]) {
-    const eventWithId = {...event, id: getEventHash(event)};
+  publish(event: Event, relays: string[]) {
     for (const relay of unique(relays)) {
       const instance = this.addOrGetRelay(relay);
-      instance.publish(eventWithId);
+      instance.publish(event);
     }
   }
 
@@ -458,11 +474,15 @@ export class RelayPool {
   setWriteRelaysForPubKey(pubkey: string, writeRelays: string[]) {
     this.writeRelays.data.set(pubkey, writeRelays);
   }
-  setCachedMetadata(pubkey: string, metadata: NostrToolsEventWithId) {
+  setCachedMetadata(pubkey: string, metadata: Event) {
     this.metadataCache.data.set(pubkey, metadata);
   }
+  setCachedContactList(pubkey: string, contactList: Event) {
+    this.contactListCache.data.set(pubkey, contactList);
+  }
+
   subscribeReferencedEvents(
-    event: NostrToolsEvent,
+    event: Event,
     onEvent: OnEvent,
     maxDelayms?: number,
     onEose?: OnEose,
@@ -502,12 +522,16 @@ export class RelayPool {
     );
   }
 
-  fetchAndCacheMetadata(pubkey: string): Promise<NostrToolsEventWithId> {
+  fetchAndCacheMetadata(pubkey: string): Promise<Event> {
     return this.metadataCache.get(pubkey);
   }
 
+  fetchAndCacheContactList(pubkey: string): Promise<Event> {
+    return this.contactListCache.get(pubkey);
+  }
+
   subscribeReferencedEventsAndPrefetchMetadata(
-    event: NostrToolsEvent,
+    event: Event,
     onEvent: OnEvent,
     maxDelayms?: number,
     onEose?: OnEose,

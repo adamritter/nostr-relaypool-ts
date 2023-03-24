@@ -1,9 +1,9 @@
-import {NostrToolsEventWithId} from "./event";
+import {Event} from "nostr-tools";
 import {RelayPool} from "./relay-pool";
 
 export class NewestEventCache {
-  data: Map<string, NostrToolsEventWithId>;
-  promises: Map<string, Promise<NostrToolsEventWithId>>;
+  data: Map<string, Event>;
+  promises: Map<string, Promise<Event>>;
   relays: string[];
   kind: number;
   relayPool: RelayPool;
@@ -15,7 +15,7 @@ export class NewestEventCache {
     this.relays = relays || ["wss://us.rbr.bio", "wss://eu.rbr.bio"];
   }
 
-  async get(pubkey: string): Promise<NostrToolsEventWithId> {
+  async get(pubkey: string): Promise<Event> {
     let value = this.data.get(pubkey);
     if (value) {
       return Promise.resolve(value);

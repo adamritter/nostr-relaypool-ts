@@ -1,11 +1,9 @@
-import {Event as NostrToolsEvent, Kind} from "nostr-tools";
+import {Kind, Event} from "nostr-tools";
 import {Author} from "./author";
 import {RelayPool} from "./relay-pool";
 
-export type {NostrToolsEvent};
-export type NostrToolsEventWithId = NostrToolsEvent & {id: string};
 import type {OnEvent} from "./on-event-filters";
-export class Event implements NostrToolsEventWithId {
+export class EventObject implements Event {
   id: string;
   kind: Kind;
   pubkey: string;
@@ -13,14 +11,14 @@ export class Event implements NostrToolsEventWithId {
   created_at: number;
   content: string;
   relayPool: RelayPool;
-  relays: string[];
+  relays: string[] | undefined;
   // @ts-ignore
   sig?: string;
 
   constructor(
-    event: NostrToolsEvent & {id: string},
+    event: Event,
     relayPool: RelayPool,
-    relays: string[]
+    relays: string[] | undefined
   ) {
     this.id = event.id;
     this.kind = event.kind;
@@ -36,24 +34,25 @@ export class Event implements NostrToolsEventWithId {
     const r: Author[] = [];
     for (const tag of this.tags) {
       if (tag[0] === "p") {
-        r.push(new Author(this.relayPool, this.relays, tag[1]));
+        r.push(new Author(this.relayPool, undefined, tag[1]));
       }
     }
     return r;
   }
-  referencedEvents(maxDelayms: number): Promise<Event>[] {
-    const r: Promise<Event>[] = [];
+  referencedEvents(maxDelayms: number): Promise<EventObject>[] {
+    const r: Promise<EventObject>[] = [];
     for (const tag of this.tags) {
       if (tag[0] === "e") {
         let relays = this.relays;
         if (tag[2]) {
-          relays = [tag[2], ...relays];
+          relays = [tag[2], ...(relays || [])];
         }
         r.push(
           this.relayPool
+            // @ts-ignore
             .getEventById(tag[1], relays, maxDelayms)
             // @ts-ignore
-            .then((e) => new Event(e, this.relayPool, this.relays))
+            .then((e) => new EventObject(e, this.relayPool, this.relays))
         );
       }
     }
@@ -66,7 +65,7 @@ export class Event implements NostrToolsEventWithId {
     for (const tag of this.tags) {
       if (tag[0] === "e") {
         if (tag[2]) {
-          relays = [tag[2], ...relays];
+          relays = [tag[2], ...(relays || [])];
         }
         ids.push(tag[1]);
       }

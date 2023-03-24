@@ -4,7 +4,7 @@ A Nostr RelayPool implementation in TypeScript using https://github.com/nbd-wtf/
 
 Its main goal is to make it simpler to build a client on top of it than just a dumb RelayPool implementation.
 
-# WARNING: From the relase of RelayPool 0.5.0 most of the expensive features went from opt out to opt in (starting from something similar to SimplePool and adding features on a need basis)
+# Change in 0.6: subscribe(...) returns nostr-tools Event. For event objects, use subscribeEventObject.
 
 Features:
 
@@ -142,7 +142,7 @@ options:
 ```typescript
  RelayPool::subscribe(filters: Filter & {relay?: string, noCache?: boolean},
                       relays: string[] | undefined,
-                      onEvent: (event: Event & {id: string}, isAfterEose: boolean,
+                      onEvent: (event: Event, isAfterEose: boolean,
                           relayURL: string | undefined) => void,
                       maxDelayms?: number,
                       onEose?: (relayURL, minCreatedAt) => void,
@@ -232,7 +232,7 @@ an unsubscribe request is sent to all relays.
 Sends subscriptions queued up with delayed subscriptions. It can be used after all subscriptions are requested (with some delay or Infinite delay).
 
 ```typescript
-  async getEventById(id: string, relays: string[], maxDelayms: number) : Promise<Event&{id: string}> {
+  async getEventById(id: string, relays: string[], maxDelayms: number) : Promise<Event> {
 ```
 
 Gets one event by event id. Many similar subscriptions should be batched together. It is useful inside a component when many components are rendered.
@@ -249,29 +249,39 @@ RelayPool::onerror(cb: (url: string, msg: string) => void)
 RelayPool::setWriteRelaysForPubKey(pubkey: string, writeRelays: string[])
 
 RelayPool::subscribeReferencedEvents(
-    event: NostrToolsEvent,
+    event: Event,
     onEvent: OnEvent,
     maxDelayms?: number,
     onEose?: OnEose,
     options: SubscriptionOptions = {}
   ): () => void
 
-RelayPool::fetchAndCacheMetadata(pubkey: string): Promise<NostrToolsEventWithId>
+RelayPool::fetchAndCacheMetadata(pubkey: string): Promise<Event>
 
 RelayPool::subscribeReferencedEventsAndPrefetchMetadata(
-    event: NostrToolsEvent,
+    event: Event,
     onEvent: OnEvent,
     maxDelayms?: number,
     onEose?: OnEose,
     options: SubscriptionOptions = {}
   ): () => void
 
-RelayPool::setCachedMetadata(pubkey: string, metadata: NostrToolsEventWithId)
+RelayPool::setCachedMetadata(pubkey: string, metadata: Event)
+
+ RelayPool::subscribeEventObject(filters: Filter & {relay?: string, noCache?: boolean},
+                      relays: string[] | undefined,
+                      onEventObject: (eventObject: EventObject, isAfterEose: boolean,
+                          relayURL: string | undefined) => void,
+                      maxDelayms?: number,
+                      onEose?: (relayURL, minCreatedAt) => void,
+                      options: {allowDuplicateEvents?: boolean, allowOlderEvents?: boolean,
+                          logAllEvents?: boolean, unsubscribeOnEose: boolean} = {}
+              ) : () => void
 
 
 new Author(relayPool: RelayPool, relays: string[], pubkey: string)
 
-Author::metaData(cb: (event: Event) => void, maxDelayms: number): () => void
+Author::metaData(cb: (event: EventObject) => void, maxDelayms: number): () => void
 
 Author::subscribe(filters: Filter[], cb: OnEvent, maxDelayms: number): () => void
 
@@ -279,15 +289,15 @@ Author::followsPubkeys(cb: (pubkeys: string[]) => void, maxDelayms: number): () 
 
 Author::follows(cb: (authors: Author[]) => void, maxDelayms: number): () => void
 
-Author::allEvents(cb: OnEvent, limit = 100, maxDelayms: number): () => void
+Author::allEvents(cb: OnEventObject, limit = 100, maxDelayms: number): () => void
 
-Author::referenced(cb: OnEvent, limit = 100, maxDelayms: number): () => void
+Author::referenced(cb: OnEventObject, limit = 100, maxDelayms: number): () => void
 
-Author::followers(cb: OnEvent, limit = 100, maxDelayms: number): () => void
+Author::followers(cb: OnEventObject, limit = 100, maxDelayms: number): () => void
 
-Author::sentAndRecievedDMs(cb: OnEvent, limit = 100, maxDelayms: number): () => void
+Author::sentAndRecievedDMs(cb: OnEventObject, limit = 100, maxDelayms: number): () => void
 
-Author::text(cb: OnEvent, limit = 100, maxDelayms: number): () => void
+Author::text(cb: OnEventObject, limit = 100, maxDelayms: number): () => void
 
 collect(onEvents: (events: Event[]) => void): OnEvent  // Keeps events array sorted by created_at
 

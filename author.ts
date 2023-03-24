@@ -1,19 +1,23 @@
-import type {OnEvent, RelayPool} from "./relay-pool";
+import type {OnEvent, OnEventObject, RelayPool} from "./relay-pool";
 import {Filter, Kind} from "nostr-tools";
-import type {Event} from "./event";
+import type {EventObject} from "./event";
 
 export class Author {
   pubkey: string;
   relayPool: RelayPool;
-  relays: string[];
-  constructor(relayPool: RelayPool, relays: string[], pubkey: string) {
+  relays: string[] | undefined;
+  constructor(
+    relayPool: RelayPool,
+    relays: string[] | undefined,
+    pubkey: string
+  ) {
     this.pubkey = pubkey;
     this.relayPool = relayPool;
     this.relays = relays;
   }
 
-  metaData(cb: (event: Event) => void, maxDelayms: number): () => void {
-    return this.relayPool.subscribe(
+  metaData(cb: (event: EventObject) => void, maxDelayms: number): () => void {
+    return this.relayPool.subscribeEventObject(
       [
         {
           authors: [this.pubkey],
@@ -25,8 +29,12 @@ export class Author {
       maxDelayms
     );
   }
-  subscribe(filters: Filter[], cb: OnEvent, maxDelayms: number): () => void {
-    return this.relayPool.subscribe(
+  subscribe(
+    filters: Filter[],
+    cb: OnEventObject,
+    maxDelayms: number
+  ): () => void {
+    return this.relayPool.subscribeEventObject(
       filters.map((filter) => ({
         authors: [this.pubkey],
         ...filter,
@@ -41,7 +49,7 @@ export class Author {
     cb: (pubkeys: string[]) => void,
     maxDelayms: number
   ): () => void {
-    return this.relayPool.subscribe(
+    return this.relayPool.subscribeEventObject(
       [
         {
           authors: [this.pubkey],
@@ -49,7 +57,7 @@ export class Author {
         },
       ],
       this.relays,
-      (event: Event) => {
+      (event: EventObject) => {
         let r: string[] = [];
         for (const tag of event.tags) {
           if (tag[0] === "p") {
@@ -64,7 +72,7 @@ export class Author {
 
   // TODO: prioritize relay over other relays for specific authors
   follows(cb: (authors: Author[]) => void, maxDelayms: number): () => void {
-    return this.relayPool.subscribe(
+    return this.relayPool.subscribeEventObject(
       [
         {
           authors: [this.pubkey],
@@ -72,13 +80,13 @@ export class Author {
         },
       ],
       this.relays,
-      (event: Event) => {
+      (event: EventObject) => {
         let r: Author[] = [];
         for (const tag of event.tags) {
           if (tag[0] === "p") {
             let relays = this.relays;
             if (tag[1]) {
-              relays = [tag[1], ...this.relays];
+              relays = [tag[1], ...(this.relays || [])];
             }
             r.push(new Author(this.relayPool, relays, tag[1]));
           }
@@ -97,7 +105,7 @@ export class Author {
     return this.followsPubkeys((pubkeys) => {
       let sfollows = new Map<string, number>();
       for (const pubkey of pubkeys) {
-        this.relayPool.subscribe(
+        this.relayPool.subscribeEventObject(
           [
             {
               authors: [pubkey],
@@ -105,7 +113,7 @@ export class Author {
             },
           ],
           this.relays,
-          (event: Event) => {
+          (event: EventObject) => {
             let dweight = 1.0 / event.tags.length;
             for (const tag of event.tags) {
               if (tag[0] === "p") {

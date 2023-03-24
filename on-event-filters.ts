@@ -1,12 +1,19 @@
-import {Filter, Kind, matchFilter} from "nostr-tools";
-import {Event} from "./event";
+import {Filter, Kind, matchFilter, Event} from "nostr-tools";
+import {EventObject} from "./event";
 export type OnEventArgs = [
   event: Event,
   afterEose: boolean,
   url: string | undefined
 ];
+
 export type OnEvent = (
   event: Event,
+  afterEose: boolean,
+  url: string | undefined
+) => void;
+
+export type OnEventObject = (
+  eventObject: EventObject,
   afterEose: boolean,
   url: string | undefined
 ) => void;
