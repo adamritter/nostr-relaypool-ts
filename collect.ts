@@ -1,4 +1,4 @@
-import {Event} from "./event";
+import {Event} from "nostr-tools";
 import {OnEvent} from "./on-event-filters";
 
 const binarySearch = function (a: Event[], target: Event) {
