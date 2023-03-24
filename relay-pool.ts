@@ -394,6 +394,13 @@ export class RelayPool {
         this.eventCache
       );
     let unsub: {unsubcb?: () => void} = {unsubcb: () => {}};
+    if (
+      maxDelayms === undefined &&
+      onEose &&
+      this.filtersToSubscribe.length > 0
+    ) {
+      this.sendSubscriptions(); // onEose is not yet supported for batched subscriptions
+    }
     this.filtersToSubscribe.push([
       dedupedOnEvent,
       filtersByRelay,
