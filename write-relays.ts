@@ -21,8 +21,8 @@ export class WriteRelaysPerPubkey {
     for (let server of this.servers) {
       rs.push(fetchWriteRelays(server, pubkey));
     }
-    const r = firstGoodPromise(rs);
-    r.then((x) => {
+    const r: Promise<string[]> = firstGoodPromise(rs);
+    r.then((x: string[]) => {
       this.data.set(pubkey, x);
       this.promises.delete(pubkey);
     });
