@@ -30,10 +30,8 @@ export class NewestEventCache {
         [{kinds: [this.kind], authors: [pubkey]}],
         this.relays,
         (event) => {
-          // @ts-ignore
           this.data.set(pubkey, event);
           this.promises.delete(pubkey);
-          // @ts-ignore
           resolve(event);
         },
         undefined,

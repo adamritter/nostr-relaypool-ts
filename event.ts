@@ -12,8 +12,7 @@ export class EventObject implements Event {
   content: string;
   relayPool: RelayPool;
   relays: string[] | undefined;
-  // @ts-ignore
-  sig?: string;
+  sig: string;
 
   constructor(
     event: Event,
@@ -28,6 +27,7 @@ export class EventObject implements Event {
     this.content = event.content;
     this.relayPool = relayPool;
     this.relays = relays;
+    this.sig = event.sig;
   }
 
   referencedAuthors(): Author[] {
@@ -51,7 +51,6 @@ export class EventObject implements Event {
           this.relayPool
             // @ts-ignore
             .getEventById(tag[1], relays, maxDelayms)
-            // @ts-ignore
             .then((e) => new EventObject(e, this.relayPool, this.relays))
         );
       }

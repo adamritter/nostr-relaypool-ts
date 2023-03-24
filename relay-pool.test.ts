@@ -47,20 +47,15 @@ function createSignedEvent(
 ): Event & {id: string} {
   const sk = generatePrivateKey();
   const pk = getPublicKey(sk);
-  const event = {
+  const unsignedEvent = {
     kind,
     pubkey: pk,
     created_at: Math.floor(Date.now() / 1000),
     tags: [],
     content,
   };
-  const eventId = getEventHash(event);
-  // @ts-ignore
-  event.id = eventId;
-  // @ts-ignore
-  event.sig = signEvent(event, sk);
-  // @ts-ignore
-  return event;
+  const eventId = getEventHash(unsignedEvent);
+  return {id: eventId, ...unsignedEvent, sig: signEvent(unsignedEvent, sk)};
 }
 
 async function publishAndGetEvent(
@@ -73,7 +68,6 @@ async function publishAndGetEvent(
   const a = relaypool.getEventById(event.id, relays, Infinity);
   relaypool.sendSubscriptions();
   await a;
-  // @ts-ignore
   return event;
 }
 test("external geteventbyid", async () => {
@@ -277,7 +271,6 @@ test("cached result", async () => {
     relaypool.subscribe(
       [
         {
-          // @ts-ignore
           ids: [event.id],
         },
       ],
@@ -344,7 +337,6 @@ test("remove duplicates", async () => {
       relaypool.subscribe(
         [
           {
-            // @ts-ignore
             kinds: [27572],
             authors: [event.pubkey],
             noCache: true,
@@ -374,7 +366,6 @@ test("remove duplicates", async () => {
     relaypool.subscribe(
       [
         {
-          // @ts-ignore
           authors: [event.pubkey],
         },
       ],
@@ -422,7 +413,6 @@ test("cache authors", async () => {
           resolve(true);
         }
       );
-      // @ts-ignore
       relaypool.publish(event, relayurls2);
     })
   ).resolves.toEqual(true);
@@ -478,7 +468,6 @@ test("kind3", async () => {
     relaypool.subscribe(
       [
         {
-          // @ts-ignore
           ids: [event.id],
         },
       ],
@@ -527,7 +516,6 @@ test("kind0", async () => {
     relaypool.subscribe(
       [
         {
-          // @ts-ignore
           ids: [event.id],
         },
       ],

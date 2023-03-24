@@ -46,7 +46,6 @@ export function matchOnEventFilters(
 ): OnEvent {
   return (event: Event, afterEose: boolean, url: string | undefined) => {
     for (let filter of filters) {
-      // @ts-ignore
       if (matchFilter(filter, event)) {
         onEvent(event, afterEose, url);
         break;

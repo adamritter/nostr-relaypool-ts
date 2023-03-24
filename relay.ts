@@ -154,10 +154,7 @@ class RelayC {
         return;
       }
 
-      return listener.event.forEach((cb) =>
-        // @ts-ignore
-        cb(event)
-      );
+      return listener.event.forEach((cb) => cb(event!));
     }
     try {
       data = JSON.parse(json);

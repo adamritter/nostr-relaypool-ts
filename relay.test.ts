@@ -49,29 +49,29 @@ test("connectivity", () => {
 
 async function publishAndGetEvent(
   options: {content?: string} = {}
-): Promise<Event & {id: string}> {
+): Promise<Event> {
   const sk = generatePrivateKey();
   const pk = getPublicKey(sk);
-  const event = {
+  const unsignedEvent = {
     kind: 27572,
     pubkey: pk,
     created_at: Math.floor(Date.now() / 1000),
     tags: [],
     content: options.content || "nostr-tools test suite",
   };
-  const eventId = getEventHash(event);
-  // @ts-ignore
-  event.id = eventId;
-  // @ts-ignore
-  event.sig = signEvent(event, sk);
+  const eventId = getEventHash(unsignedEvent);
+  const event: Event = {
+    sig: signEvent(unsignedEvent, sk),
+    id: eventId,
+    ...unsignedEvent,
+  };
   // console.log("publishing event", event);
-  // @ts-ignore
   relay.publish(event);
   return new Promise((resolve) =>
     relay
       // @ts-ignore
       .sub([{ids: [event.id]}])
-      .on("event", (event: Event & {id: string}) => {
+      .on("event", (event: Event) => {
         resolve(event);
       })
   );

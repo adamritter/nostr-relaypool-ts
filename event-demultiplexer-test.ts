@@ -34,7 +34,6 @@ describe("EventDemultiplexer", () => {
     const filters = [{ids: ["123"]}];
     const onEvent = jest.fn();
     demultiplexer.subscribe(filters, onEvent);
-    // @ts-ignore
     const event: Event = {
       id: "123",
       kind: 1,
@@ -52,7 +51,6 @@ describe("EventDemultiplexer", () => {
     const filters = [{ids: ["456"]}];
     const onEvent = jest.fn();
     demultiplexer.subscribe(filters, onEvent);
-    // @ts-ignore
     const event: Event = {
       id: "123",
       kind: 1,
@@ -70,7 +68,6 @@ describe("EventDemultiplexer", () => {
     const filters = [{ids: [""]}];
     const onEvent = jest.fn();
     demultiplexer.subscribe(filters, onEvent);
-    // @ts-ignore
     const event: Event = eventFrom({
       id: "",
       kind: 0,
@@ -93,7 +90,6 @@ describe("EventDemultiplexer", () => {
       demultiplexer.subscribe([{ids: ["" + i * 3]}], onEvent);
     }
 
-    // @ts-ignore
     const event: Event = eventFrom({
       id: "123",
       kind: 1,
@@ -104,7 +100,6 @@ describe("EventDemultiplexer", () => {
     });
     for (let i = 0; i < 2000; i++) {
       demultiplexer.onEvent(
-        // @ts-ignore
         eventFrom({...event, id: "" + i * 2}),
         true,
         "https://example.com"
@@ -121,7 +116,6 @@ describe("EventDemultiplexer", () => {
     for (let i = 0; i < 2000; i++) {
       filters.push({ids: ["" + i * 3]});
     }
-    // @ts-ignore
     const event: Event = eventFrom({
       id: "123",
       kind: 1,
@@ -134,7 +128,6 @@ describe("EventDemultiplexer", () => {
       const e = {...event, id: "" + i * 2};
       for (const filter of filters) {
         // Doesn't use sig
-        // @ts-ignore
         if (matchFilter(filter, e)) {
           counter++;
         }
