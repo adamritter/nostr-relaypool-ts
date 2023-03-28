@@ -42,7 +42,7 @@ export class RelayPool {
   timer?: ReturnType<typeof setTimeout>;
   externalGetEventById?: (id: string) => Event | undefined;
   logSubscriptions?: boolean = false;
-  dontAutoReconnect?: boolean = false;
+  autoReconnect?: boolean = false;
   startTime: number = new Date().getTime();
   deleteSignatures?: boolean;
   subscriptionCache?: Map<
@@ -60,7 +60,7 @@ export class RelayPool {
       useEventCache?: boolean;
       externalGetEventById?: (id: string) => Event | undefined;
       logSubscriptions?: boolean;
-      dontAutoReconnect?: boolean;
+      autoReconnect?: boolean;
       subscriptionCache?: boolean;
       deleteSignatures?: boolean;
       skipVerification?: boolean;
@@ -68,7 +68,7 @@ export class RelayPool {
   ) {
     this.externalGetEventById = options.externalGetEventById;
     this.logSubscriptions = options.logSubscriptions;
-    this.dontAutoReconnect = options.dontAutoReconnect;
+    this.autoReconnect = options.autoReconnect;
     this.deleteSignatures = options.deleteSignatures;
     this.skipVerification = options.skipVerification;
     this.writeRelays = new WriteRelaysPerPubkey();
@@ -99,7 +99,7 @@ export class RelayPool {
         : this.eventCache
         ? (id) => this.eventCache?.getEventById(id)
         : undefined,
-      this.dontAutoReconnect
+      this.autoReconnect
     );
     this.relayByUrl.set(relay, relayInstance);
     relayInstance.connect().then(
