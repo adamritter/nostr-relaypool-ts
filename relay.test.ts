@@ -21,7 +21,7 @@ beforeAll(() => {
   _relayServer = new InMemoryRelayServer(8089);
 });
 beforeEach(() => {
-  relay = relayInit("ws://localhost:8089/");
+  relay = relayInit("ws://localhost:8089/", undefined, true);
   relay.connect();
   _relayServer.clear();
 });

@@ -39,9 +39,9 @@ type SubscriptionOptions = {
 export function relayInit(
   url: string,
   alreadyHaveEvent?: (id: string) => (Event & {id: string}) | undefined,
-  dontAutoReconnect?: boolean
+  autoReconnect?: boolean
 ): Relay {
-  return new RelayC(url, alreadyHaveEvent, dontAutoReconnect).relayInit();
+  return new RelayC(url, alreadyHaveEvent, autoReconnect).relayInit();
 }
 class RelayC {
   url: string;
@@ -50,13 +50,13 @@ class RelayC {
   constructor(
     url: string,
     alreadyHaveEvent?: (id: string) => (Event & {id: string}) | undefined,
-    dontAutoReconnect?: boolean
+    autoReconnect?: boolean
   ) {
     this.url = url;
     this.alreadyHaveEvent = alreadyHaveEvent;
-    this.dontAutoReconnect = dontAutoReconnect;
+    this.autoReconnect = autoReconnect;
   }
-  dontAutoReconnect?: boolean;
+  autoReconnect?: boolean;
   ws: WebSocket | undefined;
   sendOnConnect: string[] = [];
   openSubs: {[id: string]: {filters: Filter[]} & SubscriptionOptions} = {};
@@ -115,7 +115,7 @@ class RelayC {
       this.listeners.disconnect.forEach((cb) => cb());
       this.resolveClose && this.resolveClose();
     } else {
-      if (!this.dontAutoReconnect) {
+      if (this.autoReconnect) {
         this.#reconnect();
       }
     }

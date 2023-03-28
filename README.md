@@ -122,7 +122,8 @@ author.text(console.log, 10, 0);
 
 ```typescript
 RelayPool(relays:string[] = [], options:{useEventCache?: boolean, logSubscriptions?: boolean,
-          deleteSignatures?: boolean, skipVerification?: boolean} = {})
+          deleteSignatures?: boolean, skipVerification?: boolean,
+          autoReconnect?: boolean} = {})
 ```
 
 RelayPool constructor connects to the given relays, but it doesn't determine which relays are used for specific subscriptions.
@@ -136,6 +137,7 @@ options:
   1 entry per RelayPool subscription, and it can help clients significantly
 - deleteSignatures: delete signatures for events
 - skipVerification: skip event signature verification
+- autoReconnect: aggressively reconnect automatically (not suggested for clients)
 
 <br/>
 
