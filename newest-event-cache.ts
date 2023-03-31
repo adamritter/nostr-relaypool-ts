@@ -1,4 +1,4 @@
-import {Event} from "nostr-tools";
+import {Event, Filter} from "nostr-tools";
 import {RelayPool} from "./relay-pool";
 
 export class NewestEventCache {
@@ -7,12 +7,19 @@ export class NewestEventCache {
   relays: string[];
   kind: number;
   relayPool: RelayPool;
-  constructor(kind: number, relayPool: RelayPool, relays?: string[]) {
+  useps: boolean;
+  constructor(
+    kind: number,
+    relayPool: RelayPool,
+    relays?: string[],
+    useps?: boolean
+  ) {
     this.data = new Map();
     this.promises = new Map();
     this.kind = kind;
     this.relayPool = relayPool;
     this.relays = relays || ["wss://us.rbr.bio", "wss://eu.rbr.bio"];
+    this.useps = useps || false;
   }
 
   async get(pubkey: string): Promise<Event> {
@@ -26,8 +33,11 @@ export class NewestEventCache {
     }
     return new Promise((resolve, reject) => {
       let tries = 0;
+      const filter: Filter = this.useps
+        ? {kinds: [this.kind], "#p": [pubkey]}
+        : {kinds: [this.kind], authors: [pubkey]};
       this.relayPool.subscribe(
-        [{kinds: [this.kind], authors: [pubkey]}],
+        [filter],
         this.relays,
         (event) => {
           this.data.set(pubkey, event);

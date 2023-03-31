@@ -9,7 +9,6 @@ import {
   groupFiltersByRelayAndEmitCacheHits,
 } from "./group-filters-by-relay";
 import {CallbackReplayer} from "./callback-replayer";
-import {WriteRelaysPerPubkey} from "./write-relays";
 import {NewestEventCache} from "./newest-event-cache";
 
 const unique = (arr: string[]) => [...new Set(arr)];
@@ -33,6 +32,12 @@ export type SubscriptionOptions = {
   unsubscribeOnEose?: boolean;
 };
 
+function parseJSON(json: string | undefined) {
+  if (json) {
+    return JSON.parse(json);
+  }
+}
+
 export class RelayPool {
   relayByUrl: Map<string, Relay> = new Map();
   noticecbs: Array<(url: string, msg: string) => void> = [];
@@ -50,7 +55,7 @@ export class RelayPool {
     CallbackReplayer<[Event, boolean, string | undefined], OnEvent>
   >;
   skipVerification?: boolean;
-  writeRelays: WriteRelaysPerPubkey;
+  writeRelays: NewestEventCache;
   metadataCache: NewestEventCache;
   contactListCache: NewestEventCache;
 
@@ -71,7 +76,7 @@ export class RelayPool {
     this.autoReconnect = options.autoReconnect;
     this.deleteSignatures = options.deleteSignatures;
     this.skipVerification = options.skipVerification;
-    this.writeRelays = new WriteRelaysPerPubkey();
+    this.writeRelays = new NewestEventCache(10003, this, undefined, true);
     this.metadataCache = new NewestEventCache(0, this);
     this.contactListCache = new NewestEventCache(3, this);
     if (options.useEventCache) {
@@ -311,7 +316,9 @@ export class RelayPool {
     const promises = [];
     const allAuthorsArray = [];
     for (const author of allAuthors) {
-      promises.push(this.writeRelays?.get(author));
+      promises.push(
+        this.writeRelays?.get(author).then((event) => parseJSON(event?.content))
+      );
       allAuthorsArray.push(author);
     }
     const allRelays: Set<string> = new Set();
@@ -478,8 +485,21 @@ export class RelayPool {
       )
       .sort();
   }
-  setWriteRelaysForPubKey(pubkey: string, writeRelays: string[]) {
-    this.writeRelays.data.set(pubkey, writeRelays);
+  setWriteRelaysForPubKey(
+    pubkey: string,
+    writeRelays: string[],
+    created_at: number
+  ) {
+    const event: Event = {
+      created_at,
+      pubkey: "",
+      id: "",
+      sig: "",
+      content: JSON.stringify(writeRelays),
+      kind: 10003,
+      tags: [["p", pubkey]],
+    };
+    this.writeRelays.data.set(pubkey, event);
   }
   setCachedMetadata(pubkey: string, metadata: Event) {
     this.metadataCache.data.set(pubkey, metadata);
