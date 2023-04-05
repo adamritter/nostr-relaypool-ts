@@ -30,6 +30,7 @@ export type SubscriptionOptions = {
   allowOlderEvents?: boolean;
   logAllEvents?: boolean;
   unsubscribeOnEose?: boolean;
+  defaultRelays?: string[];
 };
 
 function parseJSON(json: string | undefined) {
@@ -304,13 +305,16 @@ export class RelayPool {
   ) {
     const allAuthors: Set<string> = new Set();
     for (const filter of filters) {
-      if (!filter.authors) {
-        throw new Error(
-          "Authors must be specified if no relays are subscribed"
-        );
-      }
-      for (const author of filter.authors) {
-        allAuthors.add(author);
+      if (filter.authors) {
+        for (const author of filter.authors) {
+          allAuthors.add(author);
+        }
+      } else {
+        if (!options.defaultRelays) {
+          throw new Error(
+            "Authors must be specified if no relays are subscribed and no default relays are specified."
+          );
+        }
       }
     }
     const promises = [];
@@ -335,9 +339,15 @@ export class RelayPool {
         allRelays.add(relay);
       }
     }
+    let allRelaysArray = Array.from(allRelays);
+    if (allRelaysArray.length === 0) {
+      if (options.defaultRelays) {
+        allRelaysArray = options.defaultRelays;
+      }
+    }
     return this.subscribe(
       filters,
-      Array.from(allRelays),
+      allRelaysArray,
       onEvent,
       maxDelayms,
       onEose,
@@ -536,8 +546,19 @@ export class RelayPool {
       return () => {};
     }
     if (authors.length === 0) {
-      console.error("No authors for ids in event", event);
-      return () => {};
+      if (options.defaultRelays) {
+        return this.subscribe(
+          [{ids}],
+          options.defaultRelays,
+          onEvent,
+          maxDelayms,
+          onEose,
+          options
+        );
+      } else {
+        console.error("No authors for ids in event", event);
+        return () => {};
+      }
     }
     return this.subscribe(
       [{ids, authors}],
