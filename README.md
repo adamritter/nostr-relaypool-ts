@@ -148,8 +148,12 @@ options:
                           relayURL: string | undefined) => void,
                       maxDelayms?: number,
                       onEose?: (relayURL, minCreatedAt) => void,
-                      options: {allowDuplicateEvents?: boolean, allowOlderEvents?: boolean,
-                          logAllEvents?: boolean, unsubscribeOnEose: boolean} = {}
+                      options: {
+                        allowDuplicateEvents?: boolean,
+                        allowOlderEvents?: boolean,
+                        logAllEvents?: boolean,
+                        unsubscribeOnEose: boolean,
+                        defaultRelays?: string[]} = {}
               ) : () => void
 ```
 
@@ -221,6 +225,9 @@ If it's used, the returned function doesn't do anything. It can't be used togeth
 
   - unsubscribeOnEose: The most important option to use for past events with different queries (for example subscribing when the ids are known).
     the number of subscriptions on relays are limited, this option closes subscription on each relay when the relay sends EOSE event.
+
+  - defaultRelays: if relays is undefined, sometimes no writeRelays can be found for the authors in the filters.
+    In that case the subscription falls back to these passed defaultRelays
 
 Return value:
 
