@@ -506,7 +506,7 @@ export class RelayPool {
       id: "",
       sig: "",
       content: JSON.stringify(writeRelays),
-      kind: 10003,
+      kind: 2,
       tags: [["p", pubkey]],
     };
     this.writeRelays.data.set(pubkey, event);
