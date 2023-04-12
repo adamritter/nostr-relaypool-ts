@@ -29,9 +29,10 @@ Features:
 - Delete signatures (off by default)
 - Caching events (off by default): every event searched by id or event of Metadata or Contacts kind are cached in memory.
   Returning cached data can be turned off for each filter
-- Automatically close subscriptions
+- Automatically close subscriptions (optional)
 - Automatically select relays by getting write relays from indexing servers
 - Getting metadata / contacts from indexing servers and cache them.
+- Automatically reconnect to servers (optional)
 
 # Installation:
 
