@@ -24,7 +24,7 @@ Features:
   merge, deduplicate, prioritize, cache these requests and split the replies to send to each subscription
   from the clients. It needs lots of testing and optimizations to get it to production level, but prototyping is important
   at this stage.
-- Compute smallest created_at (for continueuing subscriptions on relays). When continueuing a subscription, just pass
+- Compute smallest created_at (for continuing subscriptions on relays). When continuing a subscription, just pass
   the specific relay.
 - Delete signatures (off by default)
 - Caching events (off by default): every event searched by id or event of Metadata or Contacts kind are cached in memory.
