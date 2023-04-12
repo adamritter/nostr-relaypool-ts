@@ -11,6 +11,7 @@ function indexForFilter(filter: Filter, key: string): string {
 export function mergeSimilarAndRemoveEmptyFilters(filters: Filter[]): Filter[] {
   let r = [];
   let indexByFilter = new Map<string, number>();
+  let sets = [];
   for (let filter of filters) {
     let added = false;
     for (let key in filter) {
@@ -36,8 +37,22 @@ export function mergeSimilarAndRemoveEmptyFilters(filters: Filter[]): Filter[] {
               indexByFilter.delete(index_by2);
             }
           }
-          // @ts-ignore
-          r[index][key] = [...new Set(r[index][key].concat(filter[key]))];
+          // // @ts-ignore
+          // if (!r[index][key]?.includes(filter[key])) {
+          //   // @ts-ignore
+          //   r[index][key].push(filter[key]);
+          // }
+          if (r[index][key] instanceof Set) {
+            // @ts-ignore
+            for (let v of filter[key]) {
+              // @ts-ignore
+              r[index][key].add(v);
+            }
+          } else {
+            // @ts-ignore
+            r[index][key] = new Set(r[index][key].concat(filter[key]));
+            sets.push([index, key]);
+          }
           added = true;
           break;
         }
@@ -56,6 +71,10 @@ export function mergeSimilarAndRemoveEmptyFilters(filters: Filter[]): Filter[] {
       }
       r.push({...filter});
     }
+  }
+  for (let [index, key] of sets) {
+    // @ts-ignore
+    r[index][key] = Array.from(r[index][key]);
   }
   return r;
 }

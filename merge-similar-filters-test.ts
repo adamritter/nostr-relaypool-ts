@@ -257,3 +257,31 @@ test("concat error", () => {
   let _result = mergeSimilarAndRemoveEmptyFilters(filters);
   expect(_result.length).toBe(2);
 });
+
+test("benchmark_merge", () => {
+  let filters: Filter[] = [];
+  for (let i = 0; i < 3000; i++) {
+    filters.push({authors: [i.toString()], kinds: [0, 2]});
+    filters.push({ids: [i.toString()]});
+    filters.push({"#p": [i.toString(), (i + 1).toString()]});
+  }
+  let start = Date.now();
+  let _result = mergeSimilarAndRemoveEmptyFilters(filters);
+  let time = Date.now() - start;
+  console.log("mergeSimilarAndRemoveEmptyFilters benchmark", time);
+  expect(time).toBeLessThan(100);
+  expect(_result.length).toBe(3);
+});
+
+test("merge3", () => {
+  let filters: Filter[] = [
+    {authors: ["pub1"], kinds: [0]},
+    {authors: ["pub2"], kinds: [0]},
+    {authors: ["pub3"], kinds: [0]},
+  ];
+  let result = mergeSimilarAndRemoveEmptyFilters(filters);
+  expect(result.length).toBe(1);
+  expect(JSON.stringify(result)).toBe(
+    JSON.stringify([{authors: ["pub1", "pub2", "pub3"], kinds: [0]}])
+  );
+});
