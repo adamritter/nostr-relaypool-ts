@@ -4,7 +4,11 @@ A Nostr RelayPool implementation in TypeScript using https://github.com/nbd-wtf/
 
 Its main goal is to make it simpler to build a client on top of it than just a dumb RelayPool implementation.
 
-# Change in 0.6: subscribe(...) returns nostr-tools Event. For event objects, use subscribeEventObject.
+It's used by:
+
+- https://beta.iris.to/ (to be released as Iris.to)
+- https://rbr.bio/
+- To be part of NDK
 
 Features:
 
@@ -13,21 +17,21 @@ Features:
   as the server usually handles it better.
 - Deleting empty filters: filters with no possible match are deleted, and subscription is not even created if there
   would be no valid event.
-- Duplicate events from cache / different relays are emitted only once
+- Duplicate events from cache / different relays are parsed / verified / emitted only once
 - If an event with kind 0 / 3 is emitted, older events with the same author and kind are not emitted. The last
   emitted event with that kind and author is always the freshest.
-- A big usability impovement implemented (but not yet tested) are delayed subscriptions,
-  that allows clients to request data from different components, and let the RelayPool implementation
+- Delayed subscriptions allow clients to request data from different components, and let the RelayPool implementation
   merge, deduplicate, prioritize, cache these requests and split the replies to send to each subscription
   from the clients. It needs lots of testing and optimizations to get it to production level, but prototyping is important
   at this stage.
-- async getEventById can be used to get one event (which can be cached). It works together well with delayed subscriptions,
-  as it's not good to send a subscription for just 1 event.
 - Compute smallest created_at (for continueuing subscriptions on relays). When continueuing a subscription, just pass
   the specific relay.
 - Delete signatures (off by default)
 - Caching events (off by default): every event searched by id or event of Metadata or Contacts kind are cached in memory.
   Returning cached data can be turned off for each filter
+- Automatically close subscriptions
+- Automatically select relays by getting write relays from indexing servers
+- Getting metadata / contacts from indexing servers and cache them.
 
 # Installation:
 
@@ -88,35 +92,6 @@ relayPool.onnotice((relayUrl, notice) => {
 ```
 
 <br/>
-
-# Experimental API wrapper for RelayPool
-
-This is the first taste of an API wrapper that makes RelayPool easier to use. It's experimental (many methods haven't been tested at all) and subject to change significantly.
-
-The first parameter is OnEvent, last parameter is always maxDelayms, and the middle parameter is limit if it's needed.
-
-An unsubscribe function is returned, although it's not implemented yet.
-
-```typescript
-const pubkey =
-  "32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245";
-const relays = [
-  "wss://relay.damus.io",
-  "wss://nostr.fmt.wiz.biz",
-  "wss://relay.snort.social",
-];
-const relayPool = new RelayPool();
-const author = new Author(relayPool, relays, pubkey);
-author.metaData(console.log, 0);
-author.follows(console.log, 0);
-author.followers(console.log, 0);
-author.subscribe([{kinds: [Kind.Contacts]}], console.log, 0);
-author.allEvents(console.log, 5, 0);
-author.referenced(console.log, 5, 0);
-author.followers(console.log, 50, 0);
-author.sentAndRecievedDMs(console.log, 50, 0);
-author.text(console.log, 10, 0);
-```
 
 # API documentation:
 
@@ -277,6 +252,25 @@ RelayPool::subscribeReferencedEventsAndPrefetchMetadata(
 
 RelayPool::setCachedMetadata(pubkey: string, metadata: Event)
 
+```
+
+# Support:
+
+Telegram: @AdamRitter
+
+npub1dcl4zejwr8sg9h6jzl75fy4mj6g8gpdqkfczseca6lef0d5gvzxqvux5ey
+
+# DEPRECIATED: Experimental API wrapper for RelayPool
+
+All these are depreciated as they are not too useful abstractions in practice.
+
+This is the first taste of an API wrapper that makes RelayPool easier to use. It's experimental (many methods haven't been tested at all) and subject to change significantly.
+
+The first parameter is OnEvent, last parameter is always maxDelayms, and the middle parameter is limit if it's needed.
+
+An unsubscribe function is returned, although it's not implemented yet.
+
+```typescript
  RelayPool::subscribeEventObject(filters: Filter & {relay?: string, noCache?: boolean},
                       relays: string[] | undefined,
                       onEventObject: (eventObject: EventObject, isAfterEose: boolean,
@@ -287,6 +281,24 @@ RelayPool::setCachedMetadata(pubkey: string, metadata: Event)
                           logAllEvents?: boolean, unsubscribeOnEose: boolean} = {}
               ) : () => void
 
+const pubkey =
+  "32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245";
+const relays = [
+  "wss://relay.damus.io",
+  "wss://nostr.fmt.wiz.biz",
+  "wss://relay.snort.social",
+];
+const relayPool = new RelayPool();
+const author = new Author(relayPool, relays, pubkey);
+author.metaData(console.log, 0);
+author.follows(console.log, 0);
+author.followers(console.log, 0);
+author.subscribe([{kinds: [Kind.Contacts]}], console.log, 0);
+author.allEvents(console.log, 5, 0);
+author.referenced(console.log, 5, 0);
+author.followers(console.log, 50, 0);
+author.sentAndRecievedDMs(console.log, 50, 0);
+author.text(console.log, 10, 0);
 
 new Author(relayPool: RelayPool, relays: string[], pubkey: string)
 
@@ -311,9 +323,3 @@ Author::text(cb: OnEventObject, limit = 100, maxDelayms: number): () => void
 collect(onEvents: (events: Event[]) => void): OnEvent  // Keeps events array sorted by created_at
 
 ```
-
-# Support:
-
-Telegram: @AdamRitter
-
-npub1dcl4zejwr8sg9h6jzl75fy4mj6g8gpdqkfczseca6lef0d5gvzxqvux5ey
