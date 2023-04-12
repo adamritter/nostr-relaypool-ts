@@ -217,7 +217,7 @@ an unsubscribe request is sent to all relays.
 Sends subscriptions queued up with delayed subscriptions. It can be used after all subscriptions are requested (with some delay or Infinite delay).
 
 ```typescript
-  async getEventById(id: string, relays: string[], maxDelayms: number) : Promise<Event> {
+  async getEventById(id: string, relays: string[], maxDelayms: number) : Promise<Event>
 ```
 
 Gets one event by event id. Many similar subscriptions should be batched together. It is useful inside a component when many components are rendered.
