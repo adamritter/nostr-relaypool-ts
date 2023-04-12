@@ -736,7 +736,7 @@ test("unsubscribeOnEose", async () => {
 
 const filtersByAuthor = (event: Event) => [{authors: [event.pubkey]}];
 const filtersByKind = (event: Event) => [{kinds: [event.kind]}];
-const filtersById = (event: Event & {id: string}) => [{ids: [event.id]}];
+const _filtersById = (event: Event & {id: string}) => [{ids: [event.id]}];
 const sleepms = (timeoutMs: number) =>
   new Promise((resolve) => setTimeout(() => resolve(true), timeoutMs));
 

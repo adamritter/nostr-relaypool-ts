@@ -321,7 +321,10 @@ export class RelayPool {
     const allAuthorsArray = [];
     for (const author of allAuthors) {
       promises.push(
-        this.writeRelays?.get(author).then((event) => parseJSON(event?.content))
+        this.writeRelays
+          ?.get(author)
+          .then((event) => parseJSON(event?.content))
+          .catch(() => options?.defaultRelays || [])
       );
       allAuthorsArray.push(author);
     }
@@ -345,6 +348,20 @@ export class RelayPool {
         allRelaysArray = options.defaultRelays;
       }
     }
+    if (this.logSubscriptions) {
+      console.log(
+        "getRelaysAndSubscribe",
+        "filters=",
+        filters,
+        "allRelaysArray=",
+        allRelaysArray,
+        "maxDelayms=",
+        maxDelayms,
+        "options=",
+        options
+      );
+    }
+
     return this.subscribe(
       filters,
       allRelaysArray,
@@ -506,6 +523,7 @@ export class RelayPool {
       id: "",
       sig: "",
       content: JSON.stringify(writeRelays),
+      // @ts-ignore
       kind: 10003,
       tags: [["p", pubkey]],
     };
@@ -559,6 +577,9 @@ export class RelayPool {
         console.error("No authors for ids in event", event);
         return () => {};
       }
+    }
+    if (this.logSubscriptions) {
+      console.log("subscribeReferencedEvents0", ids, authors);
     }
     return this.subscribe(
       [{ids, authors}],
