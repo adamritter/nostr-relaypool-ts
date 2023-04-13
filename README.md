@@ -8,6 +8,7 @@ It's used by:
 
 - https://iris.to/
 - https://rbr.bio/
+- https://nostrbounties.com/
 - To be part of NDK
 
 Features:
