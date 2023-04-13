@@ -6,7 +6,7 @@ Its main goal is to make it simpler to build a client on top of it than just a d
 
 It's used by:
 
-- https://beta.iris.to/ (to be released as Iris.to)
+- https://iris.to/
 - https://rbr.bio/
 - To be part of NDK
 
