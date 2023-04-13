@@ -11,6 +11,8 @@ It's used by:
 - https://nostrbounties.com/
 - To be part of NDK
 
+(Add yourself here :) )
+
 Features:
 
 - Merging filters: separate filters with the same type of query (like asking for different authors with the same
