@@ -8,7 +8,7 @@ import {type Filter, matchFilters} from "nostr-tools";
 import WebSocket from "isomorphic-ws";
 import {getHex64, getSubName} from "./fakejson";
 
-type RelayEvent = "connect" | "disconnect" | "error" | "notice";
+type RelayEvent = "connect" | "disconnect" | "error" | "notice" | "auth";
 
 export type Relay = {
   url: string;
@@ -17,6 +17,7 @@ export type Relay = {
   close: () => Promise<void>;
   sub: (filters: Filter[], opts?: SubscriptionOptions) => Sub;
   publish: (event: Event) => Pub;
+  auth: (event: Event) => Pub;
   on: (type: RelayEvent, cb: any) => void;
   off: (type: RelayEvent, cb: any) => void;
 };
@@ -66,11 +67,13 @@ class RelayC {
     disconnect: Array<() => void>;
     error: Array<() => void>;
     notice: Array<(msg: string) => void>;
+    auth: Array<(challenge: string) => void>;
   } = {
     connect: [],
     disconnect: [],
     error: [],
     notice: [],
+    auth: [],
   };
   subListeners: {
     [subid: string]:
@@ -213,6 +216,11 @@ class RelayC {
           const notice = data[1];
           this.listeners.notice.forEach((cb) => cb(notice));
           return;
+        case "AUTH":
+          if (data.length !== 2) return;
+          const challenge = data[1];
+          this.listeners.auth.forEach((cb) => cb(challenge));
+          return;
       }
     }
   }
@@ -273,6 +281,7 @@ class RelayC {
       sub: this2.sub.bind(this2),
       on: this2.on.bind(this2),
       off: this2.off.bind(this2),
+      auth: this2.auth.bind(this2),
       publish: this2.publish.bind(this2),
       connect: this2.connect.bind(this2),
       close(): Promise<void> {
@@ -311,6 +320,14 @@ class RelayC {
   }
 
   publish(event: Event): Pub {
+    return this._publish(event, "EVENT");
+  }
+
+  auth(event: Event): Pub {
+    return this._publish(event, "AUTH");
+  }
+
+  private _publish(event: Event, type: string) {
     const this2 = this;
     if (!event.id) throw new Error(`event ${event} has no id`);
     const id = event.id;
@@ -319,7 +336,7 @@ class RelayC {
     let mustMonitor = false;
 
     this2
-      .trySend(["EVENT", event])
+      .trySend([type, event])
       .then(() => {
         sent = true;
         if (mustMonitor) {
