@@ -5,6 +5,7 @@ const _ = WebSocket; // Importing WebSocket is needed for WebSocketServer to wor
 
 export class InMemoryRelayServer {
   events: (Event & {id: string})[] = [];
+  auth?: string;
   wss: WebSocketServer;
   subs: Map<string, Filter[]> = new Map();
   connections: Set<WebSocket> = new Set();
@@ -44,6 +45,9 @@ export class InMemoryRelayServer {
           this.subs.delete(sub);
         }
       });
+      if (this.auth) {
+        ws.send(JSON.stringify(["AUTH", this.auth]));
+      }
     });
   }
   async close(): Promise<void> {
@@ -53,6 +57,7 @@ export class InMemoryRelayServer {
     this.events = [];
     this.subs = new Map();
     this.totalSubscriptions = 0;
+    this.auth = undefined;
   }
   disconnectAll() {
     for (const ws of this.connections) {

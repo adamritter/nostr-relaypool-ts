@@ -1,6 +1,6 @@
-import {Filter, Sub, Event} from "nostr-tools";
+import {Filter, Event} from "nostr-tools";
 import {mergeSimilarAndRemoveEmptyFilters} from "./merge-similar-filters";
-import {type Relay, relayInit} from "./relay";
+import {type Relay, relayInit, Sub} from "./relay";
 import {OnEventObject, type OnEvent} from "./on-event-filters";
 import {EventCache} from "./event-cache";
 import {EventObject} from "./event";
@@ -42,6 +42,7 @@ function parseJSON(json: string | undefined) {
 export class RelayPool {
   relayByUrl: Map<string, Relay> = new Map();
   noticecbs: Array<(url: string, msg: string) => void> = [];
+  authcbs: Array<(relay: Relay, challenge: string) => void> = [];
   eventCache?: EventCache;
   minMaxDelayms: number = Infinity;
   filtersToSubscribe: FilterToSubscribe[] = [];
@@ -112,6 +113,9 @@ export class RelayPool {
       (onfulfilled) => {
         relayInstance?.on("notice", (msg: string) => {
           this.noticecbs.forEach((cb) => cb(relay, msg));
+        });
+        relayInstance?.on("auth", (msg: string) => {
+          this.authcbs.forEach((cb) => cb(relayInstance, msg));
         });
       },
       (onrejected) => {
@@ -503,6 +507,9 @@ export class RelayPool {
     this.relayByUrl.forEach((relay: Relay, url: string) =>
       relay.on("disconnect", (msg: string) => cb(url, msg))
     );
+  }
+  onauth(cb: (relay: Relay, challenge: string) => void) {
+    this.authcbs.push(cb);
   }
   getRelayStatuses(): [url: string, staus: number][] {
     return Array.from(this.relayByUrl.entries())

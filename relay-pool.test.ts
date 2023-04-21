@@ -864,3 +864,16 @@ test("delayfiltering", async () => {
   await sleepms(10);
   expect(_relayServer.totalSubscriptions).toEqual(2);
 });
+
+test("auth", async () => {
+  _relayServer.auth = "123";
+  const relaypool = new RelayPool(relayurls, {
+    subscriptionCache: true,
+    useEventCache: true,
+  });
+  await expect(
+    new Promise((resolve) => {
+      relaypool.onauth(() => resolve(true));
+    })
+  ).resolves.toBe(true);
+});
