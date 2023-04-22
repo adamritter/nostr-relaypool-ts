@@ -99,12 +99,12 @@ relayPool.onnotice((relayUrl, notice) => {
 # Web worker support (not all functionality is supported yet, but feel free to add, it's easy):
 
 ```
-  import { RelayPoolWorker } from 'nostr-relaypool';
+import { RelayPoolWorker } from 'nostr-relaypool';
 
-  const worker = new Worker(
-    new URL('./node_modules/nostr-relaypool/lib/nostr-relaypool.worker.js', document.location.href)
-  );
-  const relayPool = new RelayPoolWorker(worker);
+const worker = new Worker(
+  new URL('./node_modules/nostr-relaypool/lib/nostr-relaypool.worker.js', document.location.href)
+);
+const relayPool = new RelayPoolWorker(worker);
 ```
 
 <br/>
