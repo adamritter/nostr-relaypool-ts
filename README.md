@@ -101,10 +101,10 @@ relayPool.onnotice((relayUrl, notice) => {
 ```
   import { RelayPoolWorker } from 'nostr-relaypool';
 
-	const worker = new Worker(
-		new URL('./node_modules/nostr-relaypool/lib/nostr-relaypool.worker.js', document.location.href)
-	);
-	const relayPool = new RelayPoolWorker(worker);
+  const worker = new Worker(
+    new URL('./node_modules/nostr-relaypool/lib/nostr-relaypool.worker.js', document.location.href)
+  );
+  const relayPool = new RelayPoolWorker(worker);
 ```
 
 <br/>
