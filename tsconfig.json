@@ -2,14 +2,19 @@
   "compilerOptions": {
     "module": "esnext",
     "target": "esnext",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": ["dom", "dom.iterable", "esnext", "webworker", "scripthost"],
     "declaration": true,
     "strict": true,
     "moduleResolution": "node",
-    "skipLibCheck": true,
     "esModuleInterop": true,
+    "skipLibCheck": true,
     "emitDeclarationOnly": true,
     "outDir": "dist",
     "rootDir": ".",
   }
 }
+
+
+
+
+

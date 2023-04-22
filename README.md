@@ -29,6 +29,7 @@ Features:
   at this stage.
 - Compute smallest created_at (for continuing subscriptions on relays). When continuing a subscription, just pass
   the specific relay.
+- Run RelayPool in Web worker for smooth scrolling
 - Delete signatures (off by default)
 - Caching events (off by default): every event searched by id or event of Metadata or Contacts kind are cached in memory.
   Returning cached data can be turned off for each filter
@@ -93,6 +94,17 @@ relayPool.onerror((err, relayUrl) => {
 relayPool.onnotice((relayUrl, notice) => {
   console.log("RelayPool notice", notice, " from relay ", relayUrl);
 });
+```
+
+# Web worker support (not all functionality is supported yet, but feel free to add, it's easy):
+
+```
+  import { RelayPoolWorker } from 'nostr-relaypool';
+
+	const worker = new Worker(
+		new URL('./node_modules/nostr-relaypool/lib/nostr-relaypool.worker.js', document.location.href)
+	);
+	const relayPool = new RelayPoolWorker(worker);
 ```
 
 <br/>
