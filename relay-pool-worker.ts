@@ -42,6 +42,12 @@ export class RelayPoolWorker {
           callbacks.onEose(rest.relayURL, rest.minCreatedAt);
         }
       }
+    } else if (type === "subscribed") {
+      // Do nothing
+    } else if (type === "metadata") {
+      // Need better handling
+    } else if (type === "contactList") {
+      // Need better handling
     } else {
       console.warn("Unhandled message from worker:", event.data);
     }
@@ -127,7 +133,7 @@ export class RelayPoolWorker {
     });
   }
 
-  fetchAndCacheContactList(pubkey: string): Promise<string[]> {
+  fetchAndCacheContactList(pubkey: string): Promise<Event> {
     return new Promise((resolve) => {
       const listener = (event: MessageEvent) => {
         if (event.data.type === "contactList" && event.data.pubkey === pubkey) {

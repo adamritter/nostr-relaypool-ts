@@ -1,6 +1,6 @@
 {
   "name": "nostr-relaypool",
-  "version": "0.6.19",
+  "version": "0.6.21",
   "description": "A Nostr RelayPool implementation in TypeScript using only nostr-tools library as a dependency.",
   "type": "module",
   "repository": {
@@ -62,6 +62,6 @@
     "build": "node build.js",
     "pretest": "node build.js",
     "test": "NODE_OPTIONS=--experimental-vm-modules npx jest",
-    "publish": "npm i && npm run build && npm run test && npm publish"
+    "publish": "npm i && npm run build && npm run test -- --testTimeout 5000 && npm publish"
   }
 }
