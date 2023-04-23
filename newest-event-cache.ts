@@ -57,7 +57,8 @@ export class NewestEventCache {
               } on RelayInfoServers ${this.relays.join(",")}, ${tries} tries`
             );
           }
-        }
+        },
+        {dontSendOtherFilters: true}
       );
     });
   }

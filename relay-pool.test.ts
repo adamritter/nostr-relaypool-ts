@@ -880,3 +880,40 @@ test("auth", async () => {
   ).resolves.toBe(true);
   await relaypool2.close();
 });
+
+test("dontSendOtherFilters", async () => {
+  const event = createSignedEvent();
+  relaypool.publish(event, relayurls);
+
+  const never = new Promise((resolve) => {
+    relaypool.subscribe(
+      filtersByKind(event),
+      relayurls,
+      (_event) => {
+        resolve(true);
+      },
+      Infinity,
+      undefined,
+      {unsubscribeOnEose: true}
+    );
+  });
+
+  await new Promise((resolve) => {
+    relaypool.subscribe(
+      filtersByKind(event),
+      relayurls,
+      (_event) => {
+        resolve(true);
+      },
+      undefined,
+      undefined,
+      {unsubscribeOnEose: false, dontSendOtherFilters: true}
+    );
+  });
+
+  const neverResult = await Promise.race([
+    never,
+    sleepms(10).then(() => false),
+  ]);
+  expect(neverResult).toEqual(false);
+});

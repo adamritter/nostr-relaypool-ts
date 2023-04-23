@@ -220,6 +220,9 @@ If it's used, the returned function doesn't do anything. It can't be used togeth
   - defaultRelays: if relays is undefined, sometimes no writeRelays can be found for the authors in the filters.
     In that case the subscription falls back to these passed defaultRelays
 
+  - dontSendOtherFilters: other filters may have timeouts, but this subscription may be sent instantly,
+    in this case this option can be used (for example for rbr.bio that doesn't have limits).
+
 Return value:
 
 Returns a function that stops sending more data with the onEvent callback. When all virtual subscriptions are unsubscribed,

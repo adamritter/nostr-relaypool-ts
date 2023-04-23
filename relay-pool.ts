@@ -31,6 +31,7 @@ export type SubscriptionOptions = {
   logAllEvents?: boolean;
   unsubscribeOnEose?: boolean;
   defaultRelays?: string[];
+  dontSendOtherFilters?: boolean;
 };
 
 function parseJSON(json: string | undefined) {
@@ -262,7 +263,7 @@ export class RelayPool {
     return allUnsub;
   }
 
-  sendSubscriptions(onEose?: OnEose) {
+  sendSubscriptions(onEose?: OnEose, filtersToSubscribe?: FilterToSubscribe[]) {
     clearTimeout(this.timer);
     this.timer = undefined;
     let minMaxDelayms = this.minMaxDelayms;
@@ -272,7 +273,10 @@ export class RelayPool {
       OnEvent,
       Map<string, Filter[]>,
       {unsubcb?: () => void; unsuboneosecb?: () => void}
-    ] = batchFiltersByRelay(this.filtersToSubscribe, this.subscriptionCache);
+    ] = batchFiltersByRelay(
+      filtersToSubscribe || this.filtersToSubscribe,
+      this.subscriptionCache
+    );
 
     let allUnsub = this.#subscribeRelays(
       filtersByRelay,
@@ -435,18 +439,24 @@ export class RelayPool {
     if (
       maxDelayms === undefined &&
       onEose &&
-      this.filtersToSubscribe.length > 0
+      this.filtersToSubscribe.length > 0 &&
+      !options.dontSendOtherFilters
     ) {
       this.sendSubscriptions(); // onEose is not yet supported for batched subscriptions
     }
-    this.filtersToSubscribe.push([
+    const newFilters: FilterToSubscribe = [
       dedupedOnEvent,
       filtersByRelay,
       unsub,
       options.unsubscribeOnEose,
       subscriptionCacheKey,
       maxDelayms,
-    ]);
+    ];
+    if (options.dontSendOtherFilters) {
+      return this.sendSubscriptions(onEose, [newFilters]);
+    }
+
+    this.filtersToSubscribe.push(newFilters);
     if (maxDelayms === undefined) {
       return this.sendSubscriptions(onEose);
     } else {
