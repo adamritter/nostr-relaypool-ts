@@ -831,6 +831,7 @@ test("delayfiltering", async () => {
     });
   });
   expect(_relayServer.totalSubscriptions).toEqual(1);
+  relaypool.close();
   relaypool = new RelayPool([], {});
 
   const p2 = new Promise((resolve) => {
@@ -867,13 +868,15 @@ test("delayfiltering", async () => {
 
 test("auth", async () => {
   _relayServer.auth = "123";
-  const relaypool = new RelayPool(relayurls, {
+  relaypool.close();
+  const relaypool2 = new RelayPool(relayurls, {
     subscriptionCache: true,
     useEventCache: true,
   });
   await expect(
     new Promise((resolve) => {
-      relaypool.onauth(() => resolve(true));
+      relaypool2.onauth(() => resolve(true));
     })
   ).resolves.toBe(true);
+  await relaypool2.close();
 });

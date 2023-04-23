@@ -20,7 +20,7 @@ let _relayServer: InMemoryRelayServer;
 beforeAll(() => {
   _relayServer = new InMemoryRelayServer(8089);
 });
-beforeEach(() => {
+beforeEach(async () => {
   relay = relayInit("ws://localhost:8089/", undefined, true);
   relay.connect();
   _relayServer.clear();
@@ -28,6 +28,7 @@ beforeEach(() => {
 
 afterEach(async () => {
   await relay.close();
+  _relayServer.clear();
 });
 
 afterAll(async () => {
