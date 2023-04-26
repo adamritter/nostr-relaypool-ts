@@ -36,6 +36,9 @@ export class NewestEventCache {
       const filter: Filter = this.useps
         ? {kinds: [this.kind], "#p": [pubkey]}
         : {kinds: [this.kind], authors: [pubkey]};
+      // Don't log this instant sending of subscriptions
+      const logSubscriptions = this.relayPool.logSubscriptions;
+      this.relayPool.logSubscriptions = false;
       this.relayPool.subscribe(
         [filter],
         this.relays,
@@ -60,6 +63,7 @@ export class NewestEventCache {
         },
         {dontSendOtherFilters: true}
       );
+      this.relayPool.logSubscriptions = logSubscriptions;
     });
   }
 }

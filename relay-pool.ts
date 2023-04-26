@@ -43,6 +43,7 @@ function parseJSON(json: string | undefined) {
 export class RelayPool {
   relayByUrl: Map<string, Relay> = new Map();
   noticecbs: Array<(url: string, msg: string) => void> = [];
+  errorcbs: Array<(url: string, err: string) => void> = [];
   authcbs: Array<(relay: Relay, challenge: string) => void> = [];
   eventCache?: EventCache;
   minMaxDelayms: number = Infinity;
@@ -61,6 +62,7 @@ export class RelayPool {
   writeRelays: NewestEventCache;
   metadataCache: NewestEventCache;
   contactListCache: NewestEventCache;
+  logErrorsAndNotices?: boolean;
 
   constructor(
     relays?: string[],
@@ -72,6 +74,7 @@ export class RelayPool {
       subscriptionCache?: boolean;
       deleteSignatures?: boolean;
       skipVerification?: boolean;
+      logErrorsAndNotices?: boolean;
     } = {}
   ) {
     this.externalGetEventById = options.externalGetEventById;
@@ -93,6 +96,54 @@ export class RelayPool {
         this.addOrGetRelay(relay);
       }
     }
+
+    this.logErrorsAndNotices = options.logErrorsAndNotices || true;
+
+    this.onnotice((url, msg) => {
+      this.errorsAndNotices.push({
+        type: "notice",
+        url,
+        msg,
+        time: Date.now() - this.startTime,
+      });
+    });
+    this.onerror((url, msg) => {
+      this.errorsAndNotices.push({
+        type: "error",
+        url,
+        msg,
+        time: Date.now() - this.startTime,
+      });
+    });
+    setInterval(() => this.#maybeLogErrorsAndNotices(), 1000 * 10);
+  }
+  errorsAndNotices: {
+    type: string;
+    url: string;
+    msg: string | Error;
+    time: number;
+  }[] = [];
+
+  #maybeLogErrorsAndNotices() {
+    if (!this.errorsAndNotices.length) {
+      return;
+    }
+    if (!this.logErrorsAndNotices) {
+      this.errorsAndNotices = [];
+      return;
+    }
+    if (this.errorsAndNotices.length > 5) {
+      console.groupCollapsed(
+        "RelayPool errors and notices with " +
+          this.errorsAndNotices.length +
+          " entries"
+      );
+    } else {
+      console.group("RelayPool errors and notices");
+    }
+    console.table(this.errorsAndNotices.map((e) => ({...e, msg: e.msg})));
+    console.groupEnd();
+    this.errorsAndNotices = [];
   }
 
   addOrGetRelay(relay: string): Relay {
@@ -120,7 +171,7 @@ export class RelayPool {
         });
       },
       (onrejected) => {
-        console.warn("failed to connect to relay " + relay);
+        this.errorcbs.forEach((cb) => cb(relay, onrejected));
       }
     );
     return relayInstance;
@@ -186,8 +237,9 @@ export class RelayPool {
   ): Map<string, Filter[]> {
     const mergedAndRemovedEmptyFiltersByRelay = new Map();
     for (const [relay, filters] of filtersByRelay) {
-      const mergedAndRemovedEmptyFilters =
-        mergeSimilarAndRemoveEmptyFilters(filters);
+      const mergedAndRemovedEmptyFilters = mergeSimilarAndRemoveEmptyFilters(
+        mergeSimilarAndRemoveEmptyFilters(filters)
+      );
       if (mergedAndRemovedEmptyFilters.length > 0) {
         mergedAndRemovedEmptyFiltersByRelay.set(
           relay,
@@ -211,13 +263,63 @@ export class RelayPool {
     // Merging here is done to make logging more readable.
     filtersByRelay = this.#mergeAndRemoveEmptyFiltersByRelay(filtersByRelay);
     if (this.logSubscriptions) {
+      // console.log(
+      //   "RelayPool subscribeRelays: at time",
+      //   new Date().getTime() - this.startTime,
+      //   "ms, minMaxDelayms=",
+      //   minMaxDelayms,
+      //   ", filtersByRelay: ",
+      //   filtersByRelay
+      // );
+      console.group("RelayPool subscribeRelays");
       console.log(
-        "RelayPool at ",
+        "at time",
         new Date().getTime() - this.startTime,
-        " subscribing to relays, minMaxDelayms=",
-        minMaxDelayms,
-        filtersByRelay
+        "ms, minMaxDelayms=",
+        minMaxDelayms
       );
+      const flattenedFilters: any = {};
+      for (const [relay, filters] of filtersByRelay) {
+        let i = 0;
+        for (const filter of filters) {
+          const filter2: any = {...filter};
+          if (filter2.authors) {
+            filter2.authors = filter2.authors.join();
+            filter2["authors.length"] = filter?.authors?.length;
+          }
+          if (filter2.kinds) {
+            filter2.kinds = filter2.kinds.join();
+          }
+          if (filter2.ids) {
+            filter2.ids = filter2.ids.join();
+            filter2["ids.length"] = filter?.ids?.length;
+          }
+          if (filter2["#e"]) {
+            filter2["#e"] = filter2["#e"].join();
+            filter2["#e.length"] = filter["#e"].length;
+          }
+          if (filter2["#p"]) {
+            filter2["#p"] = filter2["#p"].join();
+            filter2["#p.length"] = filter["#p"].length;
+          }
+          flattenedFilters[relay + " " + i] = filter2;
+          i++;
+        }
+      }
+
+      if (Object.keys(flattenedFilters).length > 3) {
+        console.groupCollapsed(
+          Object.keys(flattenedFilters).length +
+            " filters to " +
+            filtersByRelay.size +
+            " relays"
+        );
+      }
+      console.table(flattenedFilters);
+      if (Object.keys(flattenedFilters).length > 3) {
+        console.groupEnd();
+      }
+      console.groupEnd();
     }
     const subs: Sub[] = [];
     let unsuboneosecbcalled = false;
@@ -356,19 +458,19 @@ export class RelayPool {
         allRelaysArray = options.defaultRelays;
       }
     }
-    if (this.logSubscriptions) {
-      console.log(
-        "getRelaysAndSubscribe",
-        "filters=",
-        filters,
-        "allRelaysArray=",
-        allRelaysArray,
-        "maxDelayms=",
-        maxDelayms,
-        "options=",
-        options
-      );
-    }
+    // if (this.logSubscriptions) {
+    //   console.log(
+    //     "getRelaysAndSubscribe",
+    //     "filters=",
+    //     filters,
+    //     "allRelaysArray=",
+    //     allRelaysArray,
+    //     "maxDelayms=",
+    //     maxDelayms,
+    //     "options=",
+    //     options
+    //   );
+    // }
 
     return this.subscribe(
       filters,
@@ -512,6 +614,7 @@ export class RelayPool {
     this.relayByUrl.forEach((relay: Relay, url: string) =>
       relay.on("error", (msg: string) => cb(url, msg))
     );
+    this.errorcbs.push(cb);
   }
   ondisconnect(cb: (url: string, msg: string) => void) {
     this.relayByUrl.forEach((relay: Relay, url: string) =>
@@ -596,7 +699,7 @@ export class RelayPool {
       }
     }
     if (this.logSubscriptions) {
-      console.log("subscribeReferencedEvents0", ids, authors);
+      // console.log("subscribeReferencedEvents0: ", ids, authors);
     }
     return this.subscribe(
       [{ids, authors}],
@@ -630,7 +733,14 @@ export class RelayPool {
           console.log("bad pubkey", pubkey, tag);
           continue;
         }
-        this.fetchAndCacheMetadata(pubkey);
+        this.fetchAndCacheMetadata(pubkey).catch((e) => {
+          this.errorsAndNotices.push({
+            type: "error",
+            url: "",
+            msg: `Error fetching metadata for ${pubkey}: ${e}`,
+            time: Date.now() - this.startTime,
+          });
+        });
       }
     }
     return this.subscribeReferencedEvents(

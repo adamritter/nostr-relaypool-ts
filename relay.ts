@@ -252,26 +252,27 @@ class RelayC {
 
   async connectRelay(): Promise<void> {
     return new Promise((resolve, reject) => {
-      const ws = new WebSocket(this.url);
-      this.ws = ws;
+      try {
+        const ws = new WebSocket(this.url);
+        this.ws = ws;
+      } catch (err) {
+        reject(err);
+        return;
+      }
 
-      ws.onopen = this.#onopen.bind(this, resolve);
-      ws.onerror = (e) => {
+      this.ws.onopen = this.#onopen.bind(this, resolve);
+      this.ws.onerror = (e) => {
         this.listeners.error.forEach((cb) => cb());
         reject(e);
       };
-      ws.onclose = this.#onclose.bind(this);
-      ws.onmessage = this.#onmessage.bind(this);
+      this.ws.onclose = this.#onclose.bind(this);
+      this.ws.onmessage = this.#onmessage.bind(this);
     });
   }
 
   async connect(): Promise<void> {
     if (this.ws?.readyState && this.ws.readyState === 1) return; // ws already open
-    try {
-      await this.connectRelay();
-    } catch (err) {
-      console.error("Error connecting relay ", this.url);
-    }
+    await this.connectRelay();
   }
 
   relayInit(): Relay {
