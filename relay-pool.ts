@@ -712,11 +712,28 @@ export class RelayPool {
   }
 
   fetchAndCacheMetadata(pubkey: string): Promise<Event> {
-    return this.metadataCache.get(pubkey);
+    return this.metadataCache.get(pubkey).catch((e) => {
+      this.errorsAndNotices.push({
+        type: "error",
+        msg: `Error fetching metadata for ${pubkey}: ${e}`,
+        time: Date.now() - this.startTime,
+        url: "",
+      });
+
+      throw new Error(`Error fetching metadata for ${pubkey}: ${e}`);
+    });
   }
 
   fetchAndCacheContactList(pubkey: string): Promise<Event> {
-    return this.contactListCache.get(pubkey);
+    return this.contactListCache.get(pubkey).catch((e) => {
+      this.errorsAndNotices.push({
+        type: "error",
+        msg: `Error fetching contact list for ${pubkey}: ${e}`,
+        time: Date.now() - this.startTime,
+        url: "",
+      });
+      throw new Error(`Error fetching contact list for ${pubkey}: ${e}`);
+    });
   }
 
   subscribeReferencedEventsAndPrefetchMetadata(

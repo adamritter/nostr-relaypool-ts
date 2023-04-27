@@ -119,12 +119,12 @@ class RelayC {
       this.resolveClose && this.resolveClose();
     } else {
       if (this.autoReconnect) {
-        this.#reconnect();
+        this.reconnect();
       }
     }
   }
   reconnectTimeout: number = 0;
-  #reconnect() {
+  reconnect() {
     setTimeout(() => {
       this.reconnectTimeout = Math.max(2000, this.reconnectTimeout * 3);
       console.log(
