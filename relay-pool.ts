@@ -63,6 +63,7 @@ export class RelayPool {
   metadataCache: NewestEventCache;
   contactListCache: NewestEventCache;
   logErrorsAndNotices?: boolean;
+  errorsAndNoticesInterval: any;
 
   constructor(
     relays?: string[],
@@ -115,7 +116,10 @@ export class RelayPool {
         time: Date.now() - this.startTime,
       });
     });
-    setInterval(() => this.#maybeLogErrorsAndNotices(), 1000 * 10);
+    this.errorsAndNoticesInterval = setInterval(
+      () => this.#maybeLogErrorsAndNotices(),
+      1000 * 10
+    );
   }
   errorsAndNotices: {
     type: string;
@@ -183,6 +187,7 @@ export class RelayPool {
       promises.push(relayInstance.close());
     }
     this.relayByUrl.clear();
+    clearInterval(this.errorsAndNoticesInterval);
     return Promise.all(promises);
   }
 
@@ -767,5 +772,18 @@ export class RelayPool {
       onEose,
       options
     );
+  }
+
+  reconnect() {
+    this.relayByUrl.forEach((relay: Relay) => {
+      relay.connect().catch((e) => {
+        this.errorsAndNotices.push({
+          type: "error",
+          msg: `Error reconnecting to ${relay.url}: ${e}`,
+          time: Date.now() - this.startTime,
+          url: relay.url,
+        });
+      });
+    });
   }
 }

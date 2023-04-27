@@ -119,12 +119,12 @@ class RelayC {
       this.resolveClose && this.resolveClose();
     } else {
       if (this.autoReconnect) {
-        this.reconnect();
+        this.#reconnect();
       }
     }
   }
   reconnectTimeout: number = 0;
-  reconnect() {
+  #reconnect() {
     setTimeout(() => {
       this.reconnectTimeout = Math.max(2000, this.reconnectTimeout * 3);
       console.log(
@@ -271,7 +271,11 @@ class RelayC {
   }
 
   async connect(): Promise<void> {
-    if (this.ws?.readyState && this.ws.readyState === 1) return; // ws already open
+    if (this.ws?.readyState && this.ws.readyState < 2) return; // ws already open or connecting
+    if (this.ws?.readyState === 2) {
+      this.ws.close();
+    }
+    this.ws = undefined;
     await this.connectRelay();
   }
 
