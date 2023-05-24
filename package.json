@@ -62,6 +62,7 @@
     "build": "node build.js",
     "pretest": "node build.js",
     "test": "NODE_OPTIONS=--experimental-vm-modules npx jest",
-    "publish": "npm i && npm run build && npm run test -- --testTimeout 5000 && npm publish"
+    "publish": "npm i && npm run build && npm run test -- --testTimeout 5000 && npm publish",
+    "type-check": "tsc"
   }
 }

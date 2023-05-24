@@ -1,6 +1,6 @@
 /* eslint-env jest */
 
-import {Kind, Event} from "nostr-tools";
+import {Kind, type Event} from "nostr-tools";
 import {EventCache} from "./event-cache";
 
 describe("EventCache", () => {

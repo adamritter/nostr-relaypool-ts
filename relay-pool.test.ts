@@ -5,7 +5,7 @@ import {
   generatePrivateKey,
   getEventHash,
   getPublicKey,
-  Event,
+  type Event,
 } from "nostr-tools";
 import {RelayPool} from "./relay-pool";
 import {InMemoryRelayServer} from "./in-memory-relay-server";

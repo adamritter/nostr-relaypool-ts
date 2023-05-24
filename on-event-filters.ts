@@ -1,5 +1,5 @@
-import {Filter, Kind, matchFilter, Event} from "nostr-tools";
-import {EventObject} from "./event";
+import {type Filter, Kind, matchFilter, type Event} from "nostr-tools";
+import type {EventObject} from "./event";
 export type OnEventArgs = [
   event: Event,
   afterEose: boolean,

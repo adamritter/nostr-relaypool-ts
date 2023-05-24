@@ -1,5 +1,5 @@
-import {Event, Filter} from "nostr-tools";
-import {RelayPool} from "./relay-pool";
+import type {Event, Filter} from "nostr-tools";
+import type {RelayPool} from "./relay-pool";
 
 export class NewestEventCache {
   data: Map<string, Event>;

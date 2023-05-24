@@ -1,6 +1,6 @@
 /* eslint-disable no-undef */
 // worker.ts
-import {RelayPool, SubscriptionOptions} from "./relay-pool";
+import {RelayPool, type SubscriptionOptions} from "./relay-pool";
 import type {Event} from "nostr-tools";
 
 let relayPool: RelayPool;

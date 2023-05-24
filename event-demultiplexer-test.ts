@@ -1,6 +1,6 @@
 /* eslint-env jest */
 
-import {Filter, matchFilter, Event, UnsignedEvent} from "nostr-tools";
+import {type Filter, matchFilter, type Event, type UnsignedEvent} from "nostr-tools";
 import {EventDemultiplexer} from "./event-demultiplexer";
 
 let eventFrom = (event: UnsignedEvent & {id: string}) => {
