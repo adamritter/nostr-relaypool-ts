@@ -1,4 +1,4 @@
-import {Event} from "nostr-tools";
+import type {Event} from "nostr-tools";
 
 export class MetadataCache {
   data: Map<string, Event>;

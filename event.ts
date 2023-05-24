@@ -1,6 +1,6 @@
-import {Kind, Event} from "nostr-tools";
+import type {Kind, Event} from "nostr-tools";
 import {Author} from "./author";
-import {RelayPool} from "./relay-pool";
+import type {RelayPool} from "./relay-pool";
 
 import type {OnEvent} from "./on-event-filters";
 export class EventObject implements Event {

@@ -1,14 +1,14 @@
-import {Filter, Event} from "nostr-tools";
+import type {Filter, Event} from "nostr-tools";
 import {mergeSimilarAndRemoveEmptyFilters} from "./merge-similar-filters";
 import {type Relay, relayInit, Sub} from "./relay";
-import {OnEventObject, type OnEvent} from "./on-event-filters";
+import type {OnEventObject, OnEvent} from "./on-event-filters";
 import {EventCache} from "./event-cache";
 import {EventObject} from "./event";
 import {
   batchFiltersByRelay,
   groupFiltersByRelayAndEmitCacheHits,
 } from "./group-filters-by-relay";
-import {CallbackReplayer} from "./callback-replayer";
+import type {CallbackReplayer} from "./callback-replayer";
 import {NewestEventCache} from "./newest-event-cache";
 
 const unique = (arr: string[]) => [...new Set(arr)];

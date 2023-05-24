@@ -1,5 +1,5 @@
 import type {Event} from "nostr-tools";
-import {OnEose, OnEvent, SubscriptionOptions} from "./relay-pool";
+import type {OnEose, OnEvent, SubscriptionOptions} from "./relay-pool";
 
 export class RelayPoolWorker {
   // eslint-disable-next-line no-undef

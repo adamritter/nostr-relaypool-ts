@@ -1,4 +1,4 @@
-import {Filter, Event} from "nostr-tools";
+import type {Filter, Event} from "nostr-tools";
 import {mergeSimilarAndRemoveEmptyFilters} from "./merge-similar-filters";
 import {
   doNotEmitDuplicateEvents,
@@ -6,8 +6,8 @@ import {
   matchOnEventFilters,
   type OnEvent,
 } from "./on-event-filters";
-import {EventCache} from "./event-cache";
-import {FilterToSubscribe} from "./relay-pool";
+import type {EventCache} from "./event-cache";
+import type {FilterToSubscribe} from "./relay-pool";
 import {CallbackReplayer} from "./callback-replayer";
 
 const unique = (arr: string[]) => [...new Set(arr)];
