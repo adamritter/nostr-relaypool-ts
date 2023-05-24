@@ -1,6 +1,6 @@
 import type {Filter, Event} from "nostr-tools";
 import {mergeSimilarAndRemoveEmptyFilters} from "./merge-similar-filters";
-import {type Relay, relayInit, Sub} from "./relay";
+import {type Relay, relayInit, type Sub} from "./relay";
 import type {OnEventObject, OnEvent} from "./on-event-filters";
 import {EventCache} from "./event-cache";
 import {EventObject} from "./event";

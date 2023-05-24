@@ -1,4 +1,4 @@
-import {Filter, matchFilter, Event} from "nostr-tools";
+import {type Filter, matchFilter, type Event} from "nostr-tools";
 import type {OnEvent} from "./on-event-filters";
 
 export class EventDemultiplexer {
