@@ -98,7 +98,7 @@ export class RelayPool {
       }
     }
 
-    this.logErrorsAndNotices = options.logErrorsAndNotices || true;
+    this.logErrorsAndNotices = options.logErrorsAndNotices ?? true;
 
     this.onnotice((url, msg) => {
       this.errorsAndNotices.push({
