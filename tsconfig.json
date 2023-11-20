@@ -9,7 +9,6 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "emitDeclarationOnly": true,
-    "preserveValueImports": true,
     "isolatedModules": true,
     "outDir": "dist",
     "rootDir": ".",
