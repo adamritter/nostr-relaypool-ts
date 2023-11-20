@@ -8,6 +8,8 @@ function indexForFilter(filter: Filter, key: string): string {
   return key + stringify(new_filter);
 }
 
+// Combines filters that are similar, and removes empty filters
+// Similarity is defined as having the same values for all keys except one
 export function mergeSimilarAndRemoveEmptyFilters(filters: Filter[]): Filter[] {
   let r = [];
   let indexByFilter = new Map<string, number>();

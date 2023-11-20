@@ -301,11 +301,11 @@ export class RelayPool {
           }
           if (filter2["#e"]) {
             filter2["#e"] = filter2["#e"].join();
-            filter2["#e.length"] = filter["#e"].length;
+            filter2["#e.length"] = filter["#e"]!.length;
           }
           if (filter2["#p"]) {
             filter2["#p"] = filter2["#p"].join();
-            filter2["#p.length"] = filter["#p"].length;
+            filter2["#p.length"] = filter["#p"]!.length;
           }
           flattenedFilters[relay + " " + i] = filter2;
           i++;

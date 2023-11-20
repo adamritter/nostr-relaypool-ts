@@ -1,7 +1,7 @@
 /* eslint-env jest */
 
 import {
-  signEvent,
+  getSignature,
   generatePrivateKey,
   getEventHash,
   getPublicKey,
@@ -58,7 +58,7 @@ function createSignedEvent(
     content,
   };
   const eventId = getEventHash(unsignedEvent);
-  return {id: eventId, ...unsignedEvent, sig: signEvent(unsignedEvent, sk)};
+  return {id: eventId, ...unsignedEvent, sig: getSignature(unsignedEvent, sk)};
 }
 
 async function publishAndGetEvent(

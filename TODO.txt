@@ -1,0 +1,19 @@
+It's critical to be able to continue a subscription after a restart. Also it must be in a
+subscription cache that uses an event cache.
+
+It can be dangorous to create 2 subscriptions instead of 1 original though. Probably it's the best to start with
+the newest data first. Anyways for infinite scrolling continueing is a must have.
+
+- continue handler should be implemented at least for non-batched subscription, although it's not hard to do
+  from UI. It would be cool for onEose itself to pass a continue callback. Another interface would be
+  ,,continueUntil'' or something similar. A class would handle the translation from the callback to
+  continueUntil higher level abstraction. countinueUntil can have a minimum element number as well that must
+  be retrieved after continueUntil.
+- onEose must be implemented well for batched subscriptions to be able to continue anything, though it's
+  not super important if only ,,new data'' is asked for... in that case onEose is only for error handling
+
+- a simple subscription filter cache can first just record filters that were called and the time of calling.
+  The simplest ,,continue'' would just set an ,,until'' time for time of calling.
+  Time of calling must be rounded down to 5 minutes for example for easier batching.
+  After that a restore functionality can just call and update the time of calling while extending the event cache.
+  For ,,continue'' support for non-batched events onEose server last timestamps must be recorded as well.
