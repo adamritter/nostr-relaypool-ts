@@ -21,7 +21,7 @@ export function groupFiltersByRelayAndEmitCacheHits(
     allowOlderEvents?: boolean;
     logAllEvents?: boolean;
   } = {},
-  eventCache?: EventCache
+  eventCache?: EventCache,
 ): [OnEvent, Map<string, Filter[]>] {
   let events: Event[] = [];
   if (eventCache) {
@@ -54,7 +54,7 @@ export function groupFiltersByRelayAndEmitCacheHits(
 
 function getFiltersByRelay(
   filters: (Filter & {relay?: string})[],
-  relays: string[]
+  relays: string[],
 ): Map<string, Filter[]> {
   const filtersByRelay = new Map<string, Filter[]>();
   const filtersWithoutRelay: Filter[] = [];
@@ -95,7 +95,7 @@ export function batchFiltersByRelay(
   subscriptionCache?: Map<
     string,
     CallbackReplayer<[Event, boolean, string | undefined], OnEvent>
-  >
+  >,
 ): [OnEvent, Map<string, Filter[]>, {unsubcb?: () => void}] {
   const filtersByRelay = new Map<string, Filter[]>();
   const onEvents: OnEvent[] = [];

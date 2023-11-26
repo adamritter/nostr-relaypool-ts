@@ -9,6 +9,7 @@ import {
 } from "nostr-tools";
 import {RelayPool} from "./relay-pool";
 import {InMemoryRelayServer} from "./in-memory-relay-server";
+import { SubscriptionFilterStateCache } from "./subscription-filter-state-cache";
 
 let relaypool: RelayPool;
 
@@ -921,4 +922,44 @@ test("dontSendOtherFilters", async () => {
     sleepms(10).then(() => false),
   ]);
   expect(neverResult).toEqual(false);
+});
+
+
+// Test SubscriptionFilterStateCache
+test("SubscriptionFilterStateCache", async () => {
+  const event = createSignedEvent();
+  relaypool.publish(event, relayurls);
+  expect(_relayServer.totalSubscriptions).toEqual(0);
+
+  await new Promise((resolve) => {
+    relaypool.subscribe(filtersByKind(event), relayurls, (event) => {
+      // console.log("event", event);
+      resolve(true);
+    });
+  });
+  let subscriptionFilterStateCache = new SubscriptionFilterStateCache();
+  let filter = filtersByKind(event)[0]
+  await new Promise((resolve) => {
+    relaypool.subscribe(
+      [filter],
+      relayurls,
+      (event) => {
+        // console.log("event", event);
+      },
+      undefined,
+      (url, minCreatedAt) => {
+        // console.log("onEose", url, minCreatedAt);
+        resolve(true);
+      },
+      {unsubscribeOnEose: true,
+        subscriptionFilterStateCache}
+    );
+  });
+  let filterInfoForFilter = subscriptionFilterStateCache.filterInfo.get(JSON.stringify(filter))
+  expect(filterInfoForFilter).toBeTruthy()
+  let filterInfoForFilterAndHost = filterInfoForFilter?.get(relayurls[0])
+  expect(filterInfoForFilterAndHost).toBeTruthy()
+  expect(Math.round(filterInfoForFilterAndHost![0] / 10)).toEqual(Math.round(event.created_at / 10))
+  expect(filterInfoForFilterAndHost?.[1]).toEqual(event.created_at)
+
 });

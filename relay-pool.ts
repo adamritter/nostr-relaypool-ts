@@ -10,6 +10,7 @@ import {
 } from "./group-filters-by-relay";
 import type {CallbackReplayer} from "./callback-replayer";
 import {NewestEventCache} from "./newest-event-cache";
+import {SubscriptionFilterStateCache} from "./subscription-filter-state-cache";
 
 const unique = (arr: string[]) => [...new Set(arr)];
 
@@ -22,7 +23,7 @@ export type FilterToSubscribe = [
   unsub: {unsubcb?: () => void},
   unsubscribeOnEose?: boolean,
   subscriptionCacheKey?: string,
-  maxDelayms?: number
+  maxDelayms?: number,
 ];
 
 export type SubscriptionOptions = {
@@ -32,6 +33,7 @@ export type SubscriptionOptions = {
   unsubscribeOnEose?: boolean;
   defaultRelays?: string[];
   dontSendOtherFilters?: boolean;
+  subscriptionFilterStateCache?: SubscriptionFilterStateCache;
 };
 
 function parseJSON(json: string | undefined) {
@@ -76,7 +78,7 @@ export class RelayPool {
       deleteSignatures?: boolean;
       skipVerification?: boolean;
       logErrorsAndNotices?: boolean;
-    } = {}
+    } = {},
   ) {
     this.externalGetEventById = options.externalGetEventById;
     this.logSubscriptions = options.logSubscriptions;
@@ -118,7 +120,7 @@ export class RelayPool {
     });
     this.errorsAndNoticesInterval = setInterval(
       () => this.#maybeLogErrorsAndNotices(),
-      1000 * 10
+      1000 * 10,
     );
   }
   errorsAndNotices: {
@@ -140,7 +142,7 @@ export class RelayPool {
       console.groupCollapsed(
         "RelayPool errors and notices with " +
           this.errorsAndNotices.length +
-          " entries"
+          " entries",
       );
     } else {
       console.group("RelayPool errors and notices");
@@ -160,9 +162,9 @@ export class RelayPool {
       this.externalGetEventById
         ? this.externalGetEventById
         : this.eventCache
-        ? (id) => this.eventCache?.getEventById(id)
-        : undefined,
-      this.autoReconnect
+          ? (id) => this.eventCache?.getEventById(id)
+          : undefined,
+      this.autoReconnect,
     );
     this.relayByUrl.set(relay, relayInstance);
     relayInstance.connect().then(
@@ -176,7 +178,7 @@ export class RelayPool {
       },
       (onrejected) => {
         this.errorcbs.forEach((cb) => cb(relay, onrejected));
-      }
+      },
     );
     return relayInstance;
   }
@@ -204,7 +206,7 @@ export class RelayPool {
     filters: Filter[],
     onEvent: OnEvent,
     onEose?: OnEose,
-    eventIds?: Set<string>
+    eventIds?: Set<string>,
   ): Sub | undefined {
     const mergedAndRemovedEmptyFilters =
       mergeSimilarAndRemoveEmptyFilters(filters);
@@ -238,17 +240,17 @@ export class RelayPool {
   }
 
   #mergeAndRemoveEmptyFiltersByRelay(
-    filtersByRelay: Map<string, Filter[]>
+    filtersByRelay: Map<string, Filter[]>,
   ): Map<string, Filter[]> {
     const mergedAndRemovedEmptyFiltersByRelay = new Map();
     for (const [relay, filters] of filtersByRelay) {
       const mergedAndRemovedEmptyFilters = mergeSimilarAndRemoveEmptyFilters(
-        mergeSimilarAndRemoveEmptyFilters(filters)
+        mergeSimilarAndRemoveEmptyFilters(filters),
       );
       if (mergedAndRemovedEmptyFilters.length > 0) {
         mergedAndRemovedEmptyFiltersByRelay.set(
           relay,
-          mergedAndRemovedEmptyFilters
+          mergedAndRemovedEmptyFilters,
         );
       }
     }
@@ -260,7 +262,7 @@ export class RelayPool {
     onEvent: OnEvent,
     onEose?: OnEose,
     unsub: {unsubcb?: () => void; unsuboneosecb?: () => void} = {},
-    minMaxDelayms?: number
+    minMaxDelayms?: number,
   ): () => void {
     if (filtersByRelay.size === 0) {
       return () => {};
@@ -281,7 +283,7 @@ export class RelayPool {
         "at time",
         new Date().getTime() - this.startTime,
         "ms, minMaxDelayms=",
-        minMaxDelayms
+        minMaxDelayms,
       );
       const flattenedFilters: any = {};
       for (const [relay, filters] of filtersByRelay) {
@@ -317,7 +319,7 @@ export class RelayPool {
           Object.keys(flattenedFilters).length +
             " filters to " +
             filtersByRelay.size +
-            " relays"
+            " relays",
         );
       }
       console.table(flattenedFilters);
@@ -355,7 +357,7 @@ export class RelayPool {
         filters,
         onEvent,
         subOnEose,
-        eventIds
+        eventIds,
       );
       if (sub) {
         subHolder.sub = sub;
@@ -379,10 +381,10 @@ export class RelayPool {
     const [onEvent, filtersByRelay, unsub]: [
       OnEvent,
       Map<string, Filter[]>,
-      {unsubcb?: () => void; unsuboneosecb?: () => void}
+      {unsubcb?: () => void; unsuboneosecb?: () => void},
     ] = batchFiltersByRelay(
       filtersToSubscribe || this.filtersToSubscribe,
-      this.subscriptionCache
+      this.subscriptionCache,
     );
 
     let allUnsub = this.#subscribeRelays(
@@ -390,7 +392,7 @@ export class RelayPool {
       onEvent,
       onEose,
       unsub,
-      minMaxDelayms // For logging
+      minMaxDelayms, // For logging
     );
 
     return allUnsub;
@@ -416,7 +418,7 @@ export class RelayPool {
     onEvent: OnEvent,
     maxDelayms?: number,
     onEose?: OnEose,
-    options: SubscriptionOptions = {}
+    options: SubscriptionOptions = {},
   ) {
     const allAuthors: Set<string> = new Set();
     for (const filter of filters) {
@@ -427,7 +429,7 @@ export class RelayPool {
       } else {
         if (!options.defaultRelays) {
           throw new Error(
-            "Authors must be specified if no relays are subscribed and no default relays are specified."
+            "Authors must be specified if no relays are subscribed and no default relays are specified.",
           );
         }
       }
@@ -439,7 +441,7 @@ export class RelayPool {
         this.writeRelays
           ?.get(author)
           .then((event) => parseJSON(event?.content))
-          .catch(() => options?.defaultRelays || [])
+          .catch(() => options?.defaultRelays || []),
       );
       allAuthorsArray.push(author);
     }
@@ -483,7 +485,7 @@ export class RelayPool {
       onEvent,
       maxDelayms,
       onEose,
-      options
+      options,
     );
   }
 
@@ -493,10 +495,10 @@ export class RelayPool {
     onEventObject: OnEventObject,
     maxDelayms?: number,
     onEose?: OnEose,
-    options: SubscriptionOptions = {}
+    options: SubscriptionOptions = {},
   ): () => void {
     return this.subscribe(filters, relays, (event, afterEose, url) =>
-      onEventObject(new EventObject(event, this, relays), afterEose, url)
+      onEventObject(new EventObject(event, this, relays), afterEose, url),
     );
   }
 
@@ -506,7 +508,7 @@ export class RelayPool {
     onEvent: OnEvent,
     maxDelayms?: number,
     onEose?: OnEose,
-    options: SubscriptionOptions = {}
+    options: SubscriptionOptions = {},
   ): () => void {
     if (maxDelayms !== undefined && onEose) {
       throw new Error("maxDelayms and onEose cannot be used together");
@@ -517,7 +519,7 @@ export class RelayPool {
         onEvent,
         maxDelayms,
         onEose,
-        options
+        options,
       );
       return () => {
         promise.then((x) => {
@@ -534,13 +536,22 @@ export class RelayPool {
         return cachedSubscription.sub(onEvent);
       }
     }
+    // Register SubscriptionFilterStateCache
+    if (options.subscriptionFilterStateCache) {
+      onEose = this.#registerSubscriptionFilterStateCache(
+        filters,
+        relays,
+        options.subscriptionFilterStateCache,
+        onEose,
+      );
+    }
     const [dedupedOnEvent, filtersByRelay] =
       groupFiltersByRelayAndEmitCacheHits(
         filters,
         relays,
         onEvent,
         options,
-        this.eventCache
+        this.eventCache,
       );
     let unsub: {unsubcb?: () => void} = {unsubcb: () => {}};
     if (
@@ -574,21 +585,82 @@ export class RelayPool {
       };
     }
   }
+  #registerSubscriptionFilterStateCache(
+    filters: (Filter & {
+      relay?: string | undefined;
+      noCache?: boolean | undefined;
+    })[],
+    relays: string[],
+    SubscriptionFilterStateCache: SubscriptionFilterStateCache,
+    onEose: OnEose | undefined,
+  ) : OnEose | undefined {
+    let start = Math.round(new Date().getTime() / 1000)
+
+    for (const filter of filters) {
+      let strippedFilter = {...filter, relay: undefined, noCache: undefined};
+      SubscriptionFilterStateCache.addFilter(strippedFilter);
+    }
+    if (onEose) {
+      for (const filter of filters) {
+        if (filter.relay) {
+          SubscriptionFilterStateCache.updateFilter(
+            filter,
+            -Infinity,
+            Infinity,
+            filter.relay,
+          );
+        } else {
+          for (const relay of relays) {
+            SubscriptionFilterStateCache.updateFilter(
+              filter,
+              -Infinity,
+              Infinity,
+              relay,
+            );
+          }
+        }
+      }
+      return (relay, minCreatedAt) => {
+        for (const filter of filters) {
+          if (filter.relay) {
+            SubscriptionFilterStateCache.updateFilter(
+              filter,
+              start,
+              minCreatedAt,
+              filter.relay,
+            );
+          } else {
+            for (const relay of relays) {
+              SubscriptionFilterStateCache.updateFilter(
+                filter,
+                start,
+                minCreatedAt,
+                relay,
+              );
+            }
+          }
+        }
+        onEose(relay, minCreatedAt);
+      }
+    } else {
+      return undefined
+    }
+  }
 
   async getEventObjectById(
     id: string,
     relays: string[],
-    maxDelayms: number
+    maxDelayms: number,
   ): Promise<EventObject> {
     return this.getEventById(id, relays, maxDelayms).then(
-      (event) => new EventObject(event, this, relays)
+      (event) => new EventObject(event, this, relays),
     );
   }
 
   async getEventById(
     id: string,
     relays: string[],
-    maxDelayms: number
+    maxDelayms: number,
   ): Promise<Event> {
     return new Promise((resolve, reject) => {
       this.subscribe(
@@ -598,7 +670,7 @@ export class RelayPool {
           resolve(event);
         },
         maxDelayms,
-        undefined
+        undefined,
         // {unsubscribeOnEose: true}
       );
     });
@@ -617,13 +689,13 @@ export class RelayPool {
 
   onerror(cb: (url: string, msg: string) => void) {
     this.relayByUrl.forEach((relay: Relay, url: string) =>
-      relay.on("error", (msg: string) => cb(url, msg))
+      relay.on("error", (msg: string) => cb(url, msg)),
     );
     this.errorcbs.push(cb);
   }
   ondisconnect(cb: (url: string, msg: string) => void) {
     this.relayByUrl.forEach((relay: Relay, url: string) =>
-      relay.on("disconnect", (msg: string) => cb(url, msg))
+      relay.on("disconnect", (msg: string) => cb(url, msg)),
     );
   }
   onauth(cb: (relay: Relay, challenge: string) => void) {
@@ -633,14 +705,14 @@ export class RelayPool {
     return Array.from(this.relayByUrl.entries())
       .map(
         ([url, relay]: [string, Relay]) =>
-          [url, relay.status] as [string, number]
+          [url, relay.status] as [string, number],
       )
       .sort();
   }
   setWriteRelaysForPubKey(
     pubkey: string,
     writeRelays: string[],
-    created_at: number
+    created_at: number,
   ) {
     const event: Event = {
       created_at,
@@ -666,7 +738,7 @@ export class RelayPool {
     onEvent: OnEvent,
     maxDelayms?: number,
     onEose?: OnEose,
-    options: SubscriptionOptions = {}
+    options: SubscriptionOptions = {},
   ): () => void {
     let ids: string[] = [];
     let authors: string[] = [];
@@ -696,7 +768,7 @@ export class RelayPool {
           onEvent,
           maxDelayms,
           onEose,
-          options
+          options,
         );
       } else {
         console.error("No authors for ids in event", event);
@@ -712,7 +784,7 @@ export class RelayPool {
       onEvent,
       maxDelayms,
       onEose,
-      options
+      options,
     );
   }
 
@@ -746,7 +818,7 @@ export class RelayPool {
     onEvent: OnEvent,
     maxDelayms?: number,
     onEose?: OnEose,
-    options: SubscriptionOptions = {}
+    options: SubscriptionOptions = {},
   ): () => void {
     for (const tag of event.tags) {
       if (tag[0] === "p") {
@@ -770,7 +842,7 @@ export class RelayPool {
       onEvent,
       maxDelayms,
       onEose,
-      options
+      options,
     );
   }
 
