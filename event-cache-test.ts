@@ -97,7 +97,7 @@ describe("EventCache", () => {
     const filter = {
       "#p": ["pk2"],
     };
-    console.log("tags", eventCache.eventsByTags);
+    // console.log("tags", eventCache.eventsByTags);
     const result = eventCache.getCachedEventsWithUpdatedFilters([filter], []);
     expect(result).toEqual({events: [event], filters: [filter]});
   });

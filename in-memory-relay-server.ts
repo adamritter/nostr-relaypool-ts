@@ -1,4 +1,4 @@
-import {type Event, type Filter, matchFilters} from "nostr-tools";
+import {type Event, type Filter, matchFilters, matchFilter} from "nostr-tools";
 import {WebSocket, WebSocketServer} from "isomorphic-ws";
 
 const _ = WebSocket; // Importing WebSocket is needed for WebSocketServer to work
@@ -23,8 +23,26 @@ export class InMemoryRelayServer {
           const filters = data.slice(2);
           this.totalSubscriptions++;
           this.subs.set(sub, filters);
-          for (const event of this.events) {
-            if (matchFilters(filters, event)) {
+          // Go through events in reverse order, look at limits
+          const counts = filters.map(() => 0);
+          // console.log("data", data, "events", this.events)
+          for (let i = this.events.length - 1; i >= 0; i--) {
+            const event = this.events[i];
+            // console.log("event", event)
+            let matched = false;
+            for (let j = 0; j < filters.length; j++) {
+              let filter = filters[j];
+              // console.log("filter", filter, "event", event)
+              if (matchFilter(filter, event)) {
+                counts[j]++;
+                // console.log("j", j, "count", counts[j], "limit", filter.limit)
+                if (!filter.limit || counts[j] <= filter.limit) {
+                  // console.log("matched j", j, "count", counts[j], "limit", filter.limit)
+                  matched = true;
+                }
+              }
+            }
+            if (matched) {
               // console.log('sending event to sub %s', sub, JSON.stringify(['EVENT', sub, event]))
               ws.send(JSON.stringify(["EVENT", sub, event]));
             }
@@ -32,8 +50,11 @@ export class InMemoryRelayServer {
           // console.log('sending eose to sub %s', sub, JSON.stringify(['EOSE', sub]))
           ws.send(JSON.stringify(["EOSE", sub]));
         } else if (data && data[0] === "EVENT") {
+          // console.log('received event', data[1], data[2])
           const event = data[1];
           this.events.push(event);
+          // Reply with OK
+          ws.send(JSON.stringify(["OK", event.id, true, ""]));
           for (const [sub, filters] of this.subs) {
             if (matchFilters(filters, event)) {
               // console.log('sending event to sub %s', sub, JSON.stringify(['EVENT', sub, event]))
