@@ -4,7 +4,6 @@
 //   After that a restore functionality can just call and update the time of calling while extending the event cache.
 //   TODO: handling pagination, though most of it has to be done in RelayPool class.
 
-
 import {Event, Filter, matchFilter} from "nostr-tools";
 import stableStringify from "safe-stable-stringify";
 
@@ -25,22 +24,32 @@ export class SubscriptionFilterStateCache {
   }
   // updateFilter should be called on onEose with last event time.
   updateFilter(filter: Filter, start: number, end: number, relay: string) {
+    if (filter.until && filter.until < start) {
+      start = filter.until;
+    }
+    if (filter.until) {
+      filter = {...filter, until: undefined};
+    }
     let filterString = stableStringify(filter);
     if (!this.filterInfo.has(filterString)) {
       this.filterInfo.set(filterString, new Map());
       this.filters.set(filterString, filter);
     }
     let filterInfo = this.filterInfo.get(filterString)!;
-    let time = filterInfo.get(relay) || [-Infinity, Infinity];
-    if (end < time[0]) {
-      // No overlap
+    let time = filterInfo.get(relay);
+    if (!time) {
       time = [start, end];
     } else {
-      if (start > time[0]) {
+      if (start > time[0] && end <= time[0]) {
         time[0] = start;
-      }
-      if (end < time[1]) {
-        time[1] = end;
+      } else if (start > time[0]) {
+        time = [start, end];
+      } else {
+        // Continue
+        if (start >= time[1] - 1) {
+          time[1] = end;
+        }
+        // In other cases we don't update time
       }
     }
     filterInfo.set(relay, time);

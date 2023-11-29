@@ -44,6 +44,50 @@ function parseJSON(json: string | undefined) {
   }
 }
 
+function registerSubscriptionFilterStateCache(
+  filters: (Filter & {
+    relay?: string | undefined;
+    noCache?: boolean | undefined;
+  })[],
+  relays: string[],
+  SubscriptionFilterStateCache: SubscriptionFilterStateCache,
+  onEose: OnEose | undefined,
+) : OnEose | undefined {
+  let start = Math.round(new Date().getTime() / 1000)
+
+  for (const filter of filters) {
+    let strippedFilter = {...filter, relay: undefined, noCache: undefined};
+    SubscriptionFilterStateCache.addFilter(strippedFilter);
+  }
+  if (onEose) {
+    return (relay, minCreatedAt, _continue) => {
+      for (const filter of filters) {
+        let strippedFilter = {...filter, relay: undefined, noCache: undefined};
+        if (filter.relay) {
+          SubscriptionFilterStateCache.updateFilter(
+            strippedFilter,
+            filter.until ? filter.until : start,
+            minCreatedAt,
+            filter.relay,
+          );
+        } else {
+          for (const relay of relays) {
+            SubscriptionFilterStateCache.updateFilter(
+              strippedFilter,
+              filter.until ? filter.until : start,
+              minCreatedAt,
+              relay,
+            );
+          }
+        }
+      }
+      onEose(relay, minCreatedAt, _continue);
+    }
+  } else {
+    return undefined
+  }
+}
+
 export class RelayPool {
   relayByUrl: Map<string, Relay> = new Map();
   noticecbs: Array<(url: string, msg: string) => void> = [];
@@ -562,13 +606,14 @@ export class RelayPool {
     }
     // Register SubscriptionFilterStateCache
     if (options.subscriptionFilterStateCache) {
-      onEose = this.#registerSubscriptionFilterStateCache(
+      onEose = registerSubscriptionFilterStateCache(
         filters,
         relays,
         options.subscriptionFilterStateCache,
         onEose,
       );
     }
+
     const [dedupedOnEvent, filtersByRelay] =
       groupFiltersByRelayAndEmitCacheHits(
         filters,
@@ -607,67 +652,6 @@ export class RelayPool {
         unsub.unsubcb?.();
         delete unsub.unsubcb;
       };
-    }
-  }
-  #registerSubscriptionFilterStateCache(
-    filters: (Filter & {
-      relay?: string | undefined;
-      noCache?: boolean | undefined;
-    })[],
-    relays: string[],
-    SubscriptionFilterStateCache: SubscriptionFilterStateCache,
-    onEose: OnEose | undefined,
-  ) : OnEose | undefined {
-    let start = Math.round(new Date().getTime() / 1000)
-
-    for (const filter of filters) {
-      let strippedFilter = {...filter, relay: undefined, noCache: undefined};
-      SubscriptionFilterStateCache.addFilter(strippedFilter);
-    }
-    if (onEose) {
-      for (const filter of filters) {
-        if (filter.relay) {
-          SubscriptionFilterStateCache.updateFilter(
-            filter,
-            -Infinity,
-            Infinity,
-            filter.relay,
-          );
-        } else {
-          for (const relay of relays) {
-            SubscriptionFilterStateCache.updateFilter(
-              filter,
-              -Infinity,
-              Infinity,
-              relay,
-            );
-          }
-        }
-      }
-      return (relay, minCreatedAt, _continue) => {
-        for (const filter of filters) {
-          if (filter.relay) {
-            SubscriptionFilterStateCache.updateFilter(
-              filter,
-              start,
-              minCreatedAt,
-              filter.relay,
-            );
-          } else {
-            for (const relay of relays) {
-              SubscriptionFilterStateCache.updateFilter(
-                filter,
-                start,
-                minCreatedAt,
-                relay,
-              );
-            }
-          }
-        }
-        onEose(relay, minCreatedAt, _continue);
-      }
-    } else {
-      return undefined
     }
   }
 

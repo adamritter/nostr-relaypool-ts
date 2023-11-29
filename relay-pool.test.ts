@@ -9,7 +9,7 @@ import {
 } from "nostr-tools";
 import {RelayPool} from "./relay-pool";
 import {InMemoryRelayServer} from "./in-memory-relay-server";
-import { SubscriptionFilterStateCache } from "./subscription-filter-state-cache";
+import {SubscriptionFilterStateCache} from "./subscription-filter-state-cache";
 
 let relaypool: RelayPool;
 
@@ -48,7 +48,7 @@ afterAll(async () => {
 function createSignedEvent(
   kind = 27572,
   content = "nostr-tools test suite",
-  created_at = Math.floor(Date.now() / 1000)
+  created_at = Math.floor(Date.now() / 1000),
 ): Event & {id: string} {
   const sk = generatePrivateKey();
   const pk = getPublicKey(sk);
@@ -66,7 +66,7 @@ function createSignedEvent(
 async function publishAndGetEvent(
   relays: string[],
   kind = 27572,
-  content = "nostr-tools test suite"
+  content = "nostr-tools test suite",
 ): Promise<Event & {id: string}> {
   const event = createSignedEvent(kind, content);
   relaypool.publish(event, relays);
@@ -112,7 +112,7 @@ test("external geteventbyid", async () => {
       resolve1(true);
     },
     undefined,
-    undefined
+    undefined,
   );
 
   return expect(promiseAll).resolves.toEqual([true, true]);
@@ -138,7 +138,7 @@ test("empty", async () => {
       expect(minCreatedAt).toBe(Infinity);
       expect(url).toBe(relayurls[0]);
       resolve2(true);
-    }
+    },
   );
 
   return expect(promiseAll).resolves.toEqual([true]);
@@ -175,7 +175,7 @@ test("querying relaypool", async () => {
       expect(minCreatedAt).toBe(event.created_at);
       expect(url).toBe(relayurls[0]);
       resolve2(true);
-    }
+    },
   );
 
   return expect(promiseAll).resolves.toEqual([true, true]);
@@ -199,14 +199,14 @@ test("listening and publishing", async () => {
       expect(event).toHaveProperty("kind", 27572);
       expect(event).toHaveProperty("content", "nostr-tools test suite");
       resolve2(true);
-    }
+    },
   );
 
   relaypool.publish(event, relayurls);
   return expect(
     new Promise((resolve) => {
       resolve2 = resolve;
-    })
+    }),
   ).resolves.toEqual(true);
 });
 
@@ -242,7 +242,7 @@ test("relay option in filter", async () => {
       expect(minCreatedAt).toBe(event.created_at);
       expect(url).toBe(relayurls[0]);
       resolve2(true);
-    }
+    },
   );
 
   return expect(promiseAll).resolves.toEqual([true, true]);
@@ -267,9 +267,9 @@ test("cached result", async () => {
           expect(event).toHaveProperty("kind", 27572);
           expect(event).toHaveProperty("content", "nostr-tools test suite");
           resolve(true);
-        }
+        },
       );
-    })
+    }),
   ).resolves.toEqual(true);
 
   const secondOnEvent = new Promise((resolve) => {
@@ -285,7 +285,7 @@ test("cached result", async () => {
         expect(event).toHaveProperty("kind", 27572);
         expect(event).toHaveProperty("content", "nostr-tools test suite");
         resolve(true);
-      }
+      },
     );
   });
 
@@ -310,9 +310,9 @@ test("remove duplicates", async () => {
           expect(event).toHaveProperty("kind", 27572);
           expect(event).toHaveProperty("content", "nostr-tools test suite");
           resolve(true);
-        }
+        },
       );
-    })
+    }),
   ).resolves.toEqual(true);
 
   await expect(
@@ -330,10 +330,10 @@ test("remove duplicates", async () => {
           expect(event).toHaveProperty("kind", 27572);
           expect(event).toHaveProperty("content", "nostr-tools test suite");
           resolve(true);
-        }
+        },
       );
       relaypool.publish(event, relayurls);
-    })
+    }),
   ).resolves.toEqual(true);
 
   let counter = 0;
@@ -359,11 +359,11 @@ test("remove duplicates", async () => {
         },
         undefined,
         undefined,
-        {allowDuplicateEvents: true}
+        {allowDuplicateEvents: true},
       );
       relaypool.publish(event, relayurls);
       relaypool.publish(event, relayurls2);
-    })
+    }),
   ).resolves.toEqual(true);
 
   let counter2 = 0;
@@ -383,7 +383,7 @@ test("remove duplicates", async () => {
         if (counter2 === 2) {
           resolve(true);
         }
-      }
+      },
     );
     relaypool.publish(event, relayurls);
     relaypool.publish(event, relayurls2);
@@ -393,7 +393,7 @@ test("remove duplicates", async () => {
     Promise.race([
       thirdOnEvent,
       new Promise((resolve) => setTimeout(() => resolve(-1), 50)),
-    ])
+    ]),
   ).resolves.toEqual(-1);
 });
 
@@ -416,10 +416,10 @@ test("cache authors", async () => {
           expect(event).toHaveProperty("kind", 27572);
           expect(event).toHaveProperty("content", "nostr-tools test suite");
           resolve(true);
-        }
+        },
       );
       relaypool.publish(event, relayurls2);
-    })
+    }),
   ).resolves.toEqual(true);
 
   return expect(
@@ -438,9 +438,9 @@ test("cache authors", async () => {
           expect(event).toHaveProperty("content", "nostr-tools test suite");
           expect(url).toEqual(undefined);
           resolve(true);
-        }
+        },
       );
-    })
+    }),
   ).resolves.toEqual(true);
 });
 
@@ -464,9 +464,9 @@ test("kind3", async () => {
           expect(event).toHaveProperty("kind", 3);
           expect(event).toHaveProperty("content", "nostr-tools test suite");
           resolve(true);
-        }
+        },
       );
-    })
+    }),
   ).resolves.toEqual(true);
 
   const secondOnEvent = new Promise((resolve) => {
@@ -482,7 +482,7 @@ test("kind3", async () => {
         expect(event).toHaveProperty("kind", 3);
         expect(event).toHaveProperty("content", "nostr-tools test suite");
         resolve(true);
-      }
+      },
     );
   });
 
@@ -511,9 +511,9 @@ test("kind0", async () => {
         },
         undefined,
         undefined,
-        {logAllEvents: true}
+        {logAllEvents: true},
       );
-    })
+    }),
   ).resolves.toEqual(true);
   console.log("first on event done");
 
@@ -530,7 +530,7 @@ test("kind0", async () => {
         expect(event).toHaveProperty("kind", 0);
         expect(event).toHaveProperty("content", "nostr-tools test suite");
         resolve(true);
-      }
+      },
     );
   });
 
@@ -550,7 +550,7 @@ test("kind0", async () => {
         expect(event).toHaveProperty("kind", 0);
         expect(event).toHaveProperty("content", "nostr-tools test suite");
         resolve(true);
-      }
+      },
     );
   });
 
@@ -582,7 +582,7 @@ test("nounsub", async () => {
           } else if (counter === 2) {
             resolve2(true);
           }
-        }
+        },
       );
     });
   });
@@ -609,7 +609,7 @@ test("unsub", async () => {
           } else if (counter === 2) {
             resolve2(true);
           }
-        }
+        },
       );
     });
   });
@@ -619,7 +619,7 @@ test("unsub", async () => {
       new Promise((resolve) => {
         setTimeout(() => resolve(false), 50);
       }),
-    ])
+    ]),
   ).resolves.toEqual(false);
 });
 
@@ -643,7 +643,7 @@ test("delay_nounsub", async () => {
             resolve2(true);
           }
         },
-        0
+        0,
       );
     });
   });
@@ -653,7 +653,7 @@ test("delay_nounsub", async () => {
       new Promise((resolve) => {
         setTimeout(() => resolve(false), 50);
       }),
-    ])
+    ]),
   ).resolves.toEqual(true);
 });
 
@@ -678,7 +678,7 @@ test("delay_unsub", async () => {
             resolve2(true);
           }
         },
-        0
+        0,
       );
     });
   });
@@ -688,7 +688,7 @@ test("delay_unsub", async () => {
       new Promise((resolve) => {
         setTimeout(() => resolve(false), 50);
       }),
-    ])
+    ]),
   ).resolves.toEqual(false);
 });
 
@@ -708,7 +708,7 @@ test("unsubscribeOnEose", async () => {
         expect(event).toHaveProperty("kind", event.kind);
         sub();
         setTimeout(() => resolve(true), 50);
-      }
+      },
     );
   });
 
@@ -728,7 +728,7 @@ test("unsubscribeOnEose", async () => {
         },
         undefined,
         () => resolve2(true),
-        {unsubscribeOnEose: true}
+        {unsubscribeOnEose: true},
       );
     });
   });
@@ -786,7 +786,7 @@ test("subscriptionCache", async () => {
       },
       undefined,
       undefined,
-      {unsubscribeOnEose: true}
+      {unsubscribeOnEose: true},
     );
   });
   await new Promise((resolve) => {
@@ -798,7 +798,7 @@ test("subscriptionCache", async () => {
       },
       undefined,
       undefined,
-      {unsubscribeOnEose: true}
+      {unsubscribeOnEose: true},
     );
   });
   await sleepms(10);
@@ -850,7 +850,7 @@ test("delayfiltering", async () => {
       },
       1,
       undefined,
-      {unsubscribeOnEose: true}
+      {unsubscribeOnEose: true},
     );
   });
 
@@ -863,7 +863,7 @@ test("delayfiltering", async () => {
       },
       1,
       undefined,
-      {unsubscribeOnEose: true}
+      {unsubscribeOnEose: true},
     );
   });
   await p1;
@@ -883,7 +883,7 @@ test("auth", async () => {
   await expect(
     new Promise((resolve) => {
       relaypool2.onauth(() => resolve(true));
-    })
+    }),
   ).resolves.toBe(true);
   await relaypool2.close();
 });
@@ -901,7 +901,7 @@ test("dontSendOtherFilters", async () => {
       },
       Infinity,
       undefined,
-      {unsubscribeOnEose: true}
+      {unsubscribeOnEose: true},
     );
   });
 
@@ -914,7 +914,7 @@ test("dontSendOtherFilters", async () => {
       },
       undefined,
       undefined,
-      {unsubscribeOnEose: false, dontSendOtherFilters: true}
+      {unsubscribeOnEose: false, dontSendOtherFilters: true},
     );
   });
 
@@ -924,7 +924,6 @@ test("dontSendOtherFilters", async () => {
   ]);
   expect(neverResult).toEqual(false);
 });
-
 
 // Test SubscriptionFilterStateCache
 test("SubscriptionFilterStateCache", async () => {
@@ -939,7 +938,7 @@ test("SubscriptionFilterStateCache", async () => {
     });
   });
   let subscriptionFilterStateCache = new SubscriptionFilterStateCache();
-  let filter = filtersByKind(event)[0]
+  let filter = filtersByKind(event)[0];
   await new Promise((resolve) => {
     relaypool.subscribe(
       [filter],
@@ -952,19 +951,20 @@ test("SubscriptionFilterStateCache", async () => {
         // console.log("onEose", url, minCreatedAt);
         resolve(true);
       },
-      {unsubscribeOnEose: true,
-        subscriptionFilterStateCache}
+      {unsubscribeOnEose: true, subscriptionFilterStateCache},
     );
   });
-  let filterInfoForFilter = subscriptionFilterStateCache.filterInfo.get(JSON.stringify(filter))
-  expect(filterInfoForFilter).toBeTruthy()
-  let filterInfoForFilterAndHost = filterInfoForFilter?.get(relayurls[0])
-  expect(filterInfoForFilterAndHost).toBeTruthy()
-  expect(Math.round(filterInfoForFilterAndHost![0] / 10)).toEqual(Math.round(event.created_at / 10))
-  expect(filterInfoForFilterAndHost?.[1]).toEqual(event.created_at)
-
+  let filterInfoForFilter = subscriptionFilterStateCache.filterInfo.get(
+    JSON.stringify(filter),
+  );
+  expect(filterInfoForFilter).toBeTruthy();
+  let filterInfoForFilterAndHost = filterInfoForFilter?.get(relayurls[0]);
+  expect(filterInfoForFilterAndHost).toBeTruthy();
+  expect(Math.round(filterInfoForFilterAndHost![0] / 10)).toEqual(
+    Math.round(event.created_at / 10),
+  );
+  expect(filterInfoForFilterAndHost?.[1]).toEqual(event.created_at);
 });
-
 
 // Test limit
 test("limit", async () => {
@@ -980,27 +980,29 @@ test("limit", async () => {
 
   let events = 0;
   let filters = filtersByKind(event1).map((filter) => {
-    return {...filter, limit: 1}
-  })
-  console.log({filters})
+    return {...filter, limit: 1};
+  });
+  console.log({filters});
   await new Promise((resolve) => {
-    relaypool.subscribe(filtersByKind(event1).map((filter) => {
-        return {...filter, limit: 1}
-      }), relayurls, (event) => {
-      console.log("event", event);
-      expect(event).toHaveProperty("content", "event2");
-      events++;
-    },
-    undefined,
-    (url, minCreatedAt) => {
-      expect(minCreatedAt).toBe(event2.created_at);
-      expect(events).toBe(1);
-      resolve(true);
-    },
+    relaypool.subscribe(
+      filtersByKind(event1).map((filter) => {
+        return {...filter, limit: 1};
+      }),
+      relayurls,
+      (event) => {
+        console.log("event", event);
+        expect(event).toHaveProperty("content", "event2");
+        events++;
+      },
+      undefined,
+      (url, minCreatedAt) => {
+        expect(minCreatedAt).toBe(event2.created_at);
+        expect(events).toBe(1);
+        resolve(true);
+      },
     );
   });
 });
-
 
 // Test _continue
 test("_continue", async () => {
@@ -1017,30 +1019,28 @@ test("_continue", async () => {
   // Test _continue by using limit 1 in filter
   let expectedContent = event2.content;
   let events = 0;
-  let filters = filtersByKind(event1).map((filter) => {
-    return {...filter, limit: 1}
-  })
-  console.log({filters})
   await new Promise((resolve) => {
-    relaypool.subscribe(filtersByKind(event1).map((filter) => {
-        return {...filter, limit: 1}
-      }), relayurls, (event) => {
-      console.log("event", event);
-      expect(event).toHaveProperty("content", expectedContent);
-      events++;
-    },
-    undefined,
-    (url, minCreatedAt, _continue) => {
-      // console.log("onEose", url, minCreatedAt);
-      expect(minCreatedAt).toBe(event2.created_at);
-      expect(events).toBe(1);
-      expectedContent = event1.content;
-      _continue!((relayUrl, minCreatedAt) => {
-        expect(minCreatedAt).toBe(event1.created_at);
-        expect(events).toBe(2);
-        resolve(true);
-      })
-    }
+    relaypool.subscribe(
+      filtersByKind(event1).map((filter) => {
+        return {...filter, limit: 1};
+      }),
+      relayurls,
+      (event) => {
+        expect(event).toHaveProperty("content", expectedContent);
+        events++;
+      },
+      undefined,
+      (url, minCreatedAt, _continue) => {
+        // console.log("onEose", url, minCreatedAt);
+        expect(minCreatedAt).toBe(event2.created_at);
+        expect(events).toBe(1);
+        expectedContent = event1.content;
+        _continue!((relayUrl, minCreatedAt) => {
+          expect(minCreatedAt).toBe(event1.created_at);
+          expect(events).toBe(2);
+          resolve(true);
+        });
+      },
     );
   });
 });
