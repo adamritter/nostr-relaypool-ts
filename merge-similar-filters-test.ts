@@ -268,7 +268,7 @@ test("benchmark_merge", () => {
   let start = Date.now();
   let _result = mergeSimilarAndRemoveEmptyFilters(filters);
   let time = Date.now() - start;
-  console.log("mergeSimilarAndRemoveEmptyFilters benchmark", time);
+  // console.log("mergeSimilarAndRemoveEmptyFilters benchmark", time);
   expect(time).toBeLessThan(100);
   expect(_result.length).toBe(3);
 });

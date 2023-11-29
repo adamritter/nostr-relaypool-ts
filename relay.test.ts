@@ -1,11 +1,11 @@
 /* eslint-env jest */
 
 import {
-  signEvent,
   generatePrivateKey,
   getEventHash,
   getPublicKey,
   type Event,
+  getSignature,
 } from "nostr-tools";
 
 import type {Relay} from "./relay";
@@ -61,8 +61,9 @@ async function publishAndGetEvent(
     content: options.content || "nostr-tools test suite",
   };
   const eventId = getEventHash(unsignedEvent);
+  //  const eventId = getEventHash(unsignedEvent);
   const event: Event = {
-    sig: signEvent(unsignedEvent, sk),
+    sig: getSignature(unsignedEvent, sk),
     id: eventId,
     ...unsignedEvent,
   };
@@ -146,7 +147,7 @@ test("listening (twice) and publishing", async () => {
   // @ts-ignore
   event.id = getEventHash(event);
   // @ts-ignore
-  event.sig = signEvent(event, sk);
+  event.sig = getSignature(event, sk);
   // @ts-ignore
   relay.publish(event);
   return expect(
@@ -175,7 +176,7 @@ test("two subscriptions", async () => {
   // @ts-ignore
   event.id = getEventHash(event);
   // @ts-ignore
-  event.sig = signEvent(event, sk);
+  event.sig = getSignature(event, sk);
 
   await expect(
     new Promise((resolve) => {
