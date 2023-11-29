@@ -15,7 +15,9 @@ import {SubscriptionFilterStateCache} from "./subscription-filter-state-cache";
 const unique = (arr: string[]) => [...new Set(arr)];
 
 export {type OnEvent, type OnEventObject} from "./on-event-filters";
-export type OnEose = (relayUrl: string, minCreatedAt: number) => void;
+export type OnEose = (relayUrl: string, minCreatedAt: number,
+  _continue?: (onEose: OnEose)=>void
+  ) => void;
 export type OnEventAndMetadata = (event: Event, metadata: Event) => void;
 export type FilterToSubscribe = [
   onEvent: OnEvent,
@@ -337,9 +339,9 @@ export class RelayPool {
     };
     for (const [relay, filters] of filtersByRelay) {
       let subHolder: {sub?: Sub} = {};
-      const subOnEose: OnEose = (url, minCreatedAt) => {
+      const subOnEose: OnEose = (url, minCreatedAt, _continue) => {
         if (onEose) {
-          onEose(url, minCreatedAt);
+          onEose(url, minCreatedAt, _continue);
         }
         if (unsuboneosecbcalled) {
           subHolder.sub?.unsub();
@@ -536,6 +538,28 @@ export class RelayPool {
         return cachedSubscription.sub(onEvent);
       }
     }
+    // continue_
+    if (onEose) {
+      let oldOnEose = onEose!;
+      onEose = (relayUrl: string, minCreatedAt: number) => {
+        oldOnEose(relayUrl, minCreatedAt, (onEose: OnEose) => {
+          this.subscribe(
+            filters.map(
+              (filter) =>
+                ({
+                  ...filter,
+                  until: minCreatedAt - 1,
+                } as Filter),
+            ),
+            [relayUrl],
+            onEvent,
+            maxDelayms,
+            onEose,
+            options,
+          );
+        });
+      }
+    }
     // Register SubscriptionFilterStateCache
     if (options.subscriptionFilterStateCache) {
       onEose = this.#registerSubscriptionFilterStateCache(
@@ -620,7 +644,7 @@ export class RelayPool {
           }
         }
       }
-      return (relay, minCreatedAt) => {
+      return (relay, minCreatedAt, _continue) => {
         for (const filter of filters) {
           if (filter.relay) {
             SubscriptionFilterStateCache.updateFilter(
@@ -640,7 +664,7 @@ export class RelayPool {
             }
           }
         }
-        onEose(relay, minCreatedAt);
+        onEose(relay, minCreatedAt, _continue);
       }
     } else {
       return undefined
