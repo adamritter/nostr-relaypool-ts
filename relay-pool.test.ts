@@ -1000,3 +1000,47 @@ test("limit", async () => {
     );
   });
 });
+
+
+// Test _continue
+test("_continue", async () => {
+  const event1 = createSignedEvent(10, "event1", 1000);
+  relaypool.publish(event1, relayurls);
+  const event2 = createSignedEvent(10, "event2", 2000);
+  relaypool.publish(event2, relayurls);
+
+  expect(_relayServer.totalSubscriptions).toEqual(0);
+  while (_relayServer.events.length < 2) {
+    await sleepms(3);
+  }
+
+  // Test _continue by using limit 1 in filter
+  let expectedContent = event2.content;
+  let events = 0;
+  let filters = filtersByKind(event1).map((filter) => {
+    return {...filter, limit: 1}
+  })
+  console.log({filters})
+  await new Promise((resolve) => {
+    relaypool.subscribe(filtersByKind(event1).map((filter) => {
+        return {...filter, limit: 1}
+      }), relayurls, (event) => {
+      console.log("event", event);
+      expect(event).toHaveProperty("content", expectedContent);
+      events++;
+    },
+    undefined,
+    (url, minCreatedAt, _continue) => {
+      // console.log("onEose", url, minCreatedAt);
+      expect(minCreatedAt).toBe(event2.created_at);
+      expect(events).toBe(1);
+      expectedContent = event1.content;
+      _continue!((relayUrl, minCreatedAt) => {
+        expect(minCreatedAt).toBe(event1.created_at);
+        expect(events).toBe(2);
+        resolve(true);
+      })
+    }
+    );
+  });
+});
