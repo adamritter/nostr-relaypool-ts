@@ -47,14 +47,15 @@ afterAll(async () => {
 
 function createSignedEvent(
   kind = 27572,
-  content = "nostr-tools test suite"
+  content = "nostr-tools test suite",
+  created_at = Math.floor(Date.now() / 1000)
 ): Event & {id: string} {
   const sk = generatePrivateKey();
   const pk = getPublicKey(sk);
   const unsignedEvent = {
     kind,
     pubkey: pk,
-    created_at: Math.floor(Date.now() / 1000),
+    created_at,
     tags: [],
     content,
   };
@@ -962,4 +963,40 @@ test("SubscriptionFilterStateCache", async () => {
   expect(Math.round(filterInfoForFilterAndHost![0] / 10)).toEqual(Math.round(event.created_at / 10))
   expect(filterInfoForFilterAndHost?.[1]).toEqual(event.created_at)
 
+});
+
+
+// Test limit
+test("limit", async () => {
+  const event1 = createSignedEvent(10, "event1", 1000);
+  relaypool.publish(event1, relayurls);
+  const event2 = createSignedEvent(10, "event2", 2000);
+  relaypool.publish(event2, relayurls);
+
+  expect(_relayServer.totalSubscriptions).toEqual(0);
+  while (_relayServer.events.length < 2) {
+    await sleepms(3);
+  }
+
+  let events = 0;
+  let filters = filtersByKind(event1).map((filter) => {
+    return {...filter, limit: 1}
+  })
+  console.log({filters})
+  await new Promise((resolve) => {
+    relaypool.subscribe(filtersByKind(event1).map((filter) => {
+        return {...filter, limit: 1}
+      }), relayurls, (event) => {
+      console.log("event", event);
+      expect(event).toHaveProperty("content", "event2");
+      events++;
+    },
+    undefined,
+    (url, minCreatedAt) => {
+      expect(minCreatedAt).toBe(event2.created_at);
+      expect(events).toBe(1);
+      resolve(true);
+    },
+    );
+  });
 });
