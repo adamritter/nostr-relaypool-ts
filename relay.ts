@@ -131,7 +131,7 @@ class RelayC {
         this.url,
         "reconnecting after " + this.reconnectTimeout / 1000 + "s"
       );
-      this.connect();
+      this.connect().catch(() => this.#reconnect());
     }, this.reconnectTimeout);
   }
 
