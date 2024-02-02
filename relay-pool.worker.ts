@@ -20,7 +20,7 @@ self.onmessage = (event: MessageEvent<MessageData>) => {
       relayPool = new RelayPool(data.relays, data.options);
 
       // Set event listeners
-      relayPool.onerror((err, relayUrl) => {
+      relayPool.onerror((relayUrl, err) => {
         postMessage({type: "error", err, relayUrl});
       });
 
