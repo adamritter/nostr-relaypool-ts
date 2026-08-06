@@ -106,7 +106,7 @@ class RelayC {
     const msg = JSON.stringify(params);
 
     if (this.connected) {
-      this.ws?.send(msg);
+      try{this.ws?.send(msg);}catch(err){console.log('error sending to relay. repushing to queue');this.sendOnConnect.push(msg);}
     } else {
       this.sendOnConnect.push(msg);
     }
@@ -238,13 +238,15 @@ class RelayC {
       }
       this.trySend(["REQ", subid, ...this.openSubs[subid].filters]);
     }
+
+    sendOnConnect2: string[] = [];
     for (const msg of this.sendOnConnect) {
       if (this.logging) {
         console.log("(Relay msg)", this.url, msg);
       }
-      this.ws?.send(msg);
+      try{this.ws?.send(msg);}catch(err){console.log('error sending to relay. reassigning to queue').sendOnConnect2.push(msg)}
     }
-    this.sendOnConnect = [];
+    this.sendOnConnect = sendOnConnect2;
 
     this.listeners.connect.forEach((cb) => cb());
     opened();
