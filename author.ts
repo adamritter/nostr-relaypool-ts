@@ -1,5 +1,6 @@
 import type {OnEvent, OnEventObject, RelayPool} from "./relay-pool";
-import {type Filter, Kind} from "nostr-tools";
+import {type Filter} from "nostr-tools";
+import {Kind} from "./kind";
 import type {EventObject} from "./event";
 
 export class Author {

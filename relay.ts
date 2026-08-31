@@ -3,23 +3,31 @@
 // Don't rely on Relay interface, it will change (I'll probably delete a lot of code from here, there's no need for
 // multiple listeners)
 
-import {type Event, verifySignature, validateEvent} from "nostr-tools";
+import {type Event, verifyEvent, validateEvent} from "nostr-tools";
 import {type Filter, matchFilters} from "nostr-tools";
 import WebSocket from "isomorphic-ws";
 import {getHex64, getSubName} from "./fakejson";
-
-type RelayEvent = "connect" | "disconnect" | "error" | "notice" | "auth";
+import {WebSocketConnection} from "./websocket-connection";
+import {RelayEventEmitter} from "./relay-event-emitter";
+import {AsyncMessageQueue} from "./async-message-queue";
 
 export type Relay = {
   url: string;
   status: number;
+  connectionInfo: string;
   connect: () => Promise<void>;
   close: () => Promise<void>;
   sub: (filters: Filter[], opts?: SubscriptionOptions) => Sub;
   publish: (event: Event) => Pub;
   auth: (event: Event) => Pub;
-  on: (type: RelayEvent, cb: any) => void;
-  off: (type: RelayEvent, cb: any) => void;
+  on: (
+    type: "connect" | "disconnect" | "error" | "notice" | "auth",
+    cb: any
+  ) => void;
+  off: (
+    type: "connect" | "disconnect" | "error" | "notice" | "auth",
+    cb: any
+  ) => void;
 };
 export type Pub = {
   on: (type: "ok" | "seen" | "failed", cb: any) => void;
@@ -48,6 +56,10 @@ class RelayC {
   url: string;
   alreadyHaveEvent?: (id: string) => (Event & {id: string}) | undefined;
   logging: boolean = false;
+  private wsConnection: WebSocketConnection;
+  private eventEmitter: RelayEventEmitter;
+  private messageQueue: AsyncMessageQueue;
+
   constructor(
     url: string,
     alreadyHaveEvent?: (id: string) => (Event & {id: string}) | undefined,
@@ -56,25 +68,24 @@ class RelayC {
     this.url = url;
     this.alreadyHaveEvent = alreadyHaveEvent;
     this.autoReconnect = autoReconnect;
+
+    this.eventEmitter = new RelayEventEmitter();
+    this.messageQueue = new AsyncMessageQueue(this.handleMessage.bind(this));
+    this.wsConnection = new WebSocketConnection(
+      url,
+      autoReconnect || false,
+      {
+        open: () => this.eventEmitter.emit("connect", undefined),
+        message: (data) => this.messageQueue.push(data),
+        error: (e) => this.eventEmitter.emit("error", e),
+        close: (e) => this.eventEmitter.emit("disconnect", undefined),
+      }
+    );
   }
   autoReconnect?: boolean;
-  ws: WebSocket | undefined;
   sendOnConnect: string[] = [];
   openSubs: {[id: string]: {filters: Filter[]} & SubscriptionOptions} = {};
   closedByClient: boolean = false;
-  listeners: {
-    connect: Array<() => void>;
-    disconnect: Array<() => void>;
-    error: Array<() => void>;
-    notice: Array<(msg: string) => void>;
-    auth: Array<(challenge: string) => void>;
-  } = {
-    connect: [],
-    disconnect: [],
-    error: [],
-    notice: [],
-    auth: [],
-  };
   subListeners: {
     [subid: string]:
       | {
@@ -90,120 +101,56 @@ class RelayC {
       failed: Array<(reason: string) => void>;
     };
   } = {};
-  incomingMessageQueue: string[] = [];
-  handleNextInterval: any;
 
-  #handleNext() {
-    if (this.incomingMessageQueue.length === 0) {
-      clearInterval(this.handleNextInterval);
-      this.handleNextInterval = null;
-      return;
-    }
-    this.#handleMessage({data: this.incomingMessageQueue.shift()});
-  }
-
-  async trySend(params: [string, ...any]) {
-    const msg = JSON.stringify(params);
-
-    if (this.connected) {
-      this.ws?.send(msg);
-    } else {
-      this.sendOnConnect.push(msg);
-    }
-  }
-  resolveClose: (() => void) | undefined = undefined;
-
-  async #onclose() {
-    if (this.closedByClient) {
-      this.listeners.disconnect.forEach((cb) => cb());
-      this.resolveClose && this.resolveClose();
-    } else {
-      if (this.autoReconnect) {
-        this.#reconnect();
-      }
-    }
-  }
-  reconnectTimeout: number = 0;
-  #reconnect() {
-    setTimeout(() => {
-      this.reconnectTimeout = Math.max(2000, this.reconnectTimeout * 3);
-      console.log(
-        this.url,
-        "reconnecting after " + this.reconnectTimeout / 1000 + "s"
-      );
-      this.connect().catch(() => this.#reconnect());
-    }, this.reconnectTimeout);
-  }
-
-  async #onmessage(e: any) {
-    this.incomingMessageQueue.push(e.data);
-    if (!this.handleNextInterval) {
-      this.handleNextInterval = setInterval(() => this.#handleNext(), 0);
-    }
-  }
-
-  async #handleMessage(e: any) {
+  // Message handling logic (from original #handleMessage)
+  private async handleMessage(messageData: any) {
     let data;
-    let json: string = e.data.toString();
-    if (!json) {
-      return;
-    }
+    let json: string = messageData.toString();
+    if (!json) return;
+
+    // Fast-path for event pre-check
     let eventId = getHex64(json, "id");
     let event = this.alreadyHaveEvent?.(eventId);
     if (event) {
       const listener = this.subListeners[getSubName(json)];
-
-      if (!listener) {
-        return;
-      }
-
-      return listener.event.forEach((cb) => cb(event!));
+      if (listener) listener.event.forEach((cb) => cb(event));
+      return;
     }
+
     try {
       data = JSON.parse(json);
     } catch (err) {
-      data = e.data;
+      this.eventEmitter.emit("error", `Failed to parse JSON from relay: ${err}`);
+      return;
     }
 
     if (data.length >= 1) {
       switch (data[0]) {
-        case "EVENT":
-          if (this.logging) {
-            console.log(data);
-          }
-          if (data.length !== 3) return; // ignore empty or malformed EVENT
-
+        case "EVENT": {
+          if (data.length !== 3) return;
           const id = data[1];
           const event = data[2];
-          if (!this.openSubs[id]) {
-            return;
-          }
-          if (this.openSubs[id].eventIds?.has(eventId)) {
-            return;
-          }
+          if (!this.openSubs[id]) return;
+          if (this.openSubs[id].eventIds?.has(eventId)) return;
           this.openSubs[id].eventIds?.add(eventId);
 
           if (
             validateEvent(event) &&
-            this.openSubs[id] &&
-            (this.openSubs[id].skipVerification || verifySignature(event)) &&
+            (this.openSubs[id].skipVerification || verifyEvent(event)) &&
             matchFilters(this.openSubs[id].filters, event)
           ) {
-            this.openSubs[id];
-            (this.subListeners[id]?.event || []).forEach((cb) => cb(event));
+            this.subListeners[id]?.event.forEach((cb) => cb(event));
           }
           return;
+        }
         case "EOSE": {
-          if (data.length !== 2) return; // ignore empty or malformed EOSE
+          if (data.length !== 2) return;
           const id = data[1];
-          if (this.logging) {
-            console.log("EOSE", this.url, id);
-          }
-          (this.subListeners[id]?.eose || []).forEach((cb) => cb());
+          this.subListeners[id]?.eose.forEach((cb) => cb());
           return;
         }
         case "OK": {
-          if (data.length < 3) return; // ignore empty or malformed OK
+          if (data.length < 3) return;
           const id: string = data[1];
           const ok: boolean = data[2];
           const reason: string = data[3] || "";
@@ -211,74 +158,190 @@ class RelayC {
           else this.pubListeners[id]?.failed.forEach((cb) => cb(reason));
           return;
         }
-        case "NOTICE":
-          if (data.length !== 2) return; // ignore empty or malformed NOTICE
+        case "NOTICE": {
+          if (data.length !== 2) return;
           const notice = data[1];
-          this.listeners.notice.forEach((cb) => cb(notice));
+          this.eventEmitter.emit("notice", notice);
           return;
-        case "AUTH":
+        }
+        case "AUTH": {
           if (data.length !== 2) return;
           const challenge = data[1];
-          this.listeners.auth.forEach((cb) => cb(challenge));
+          this.eventEmitter.emit("auth", challenge);
           return;
+        }
+        default: {
+          // Handle other messages if necessary
+        }
       }
     }
   }
-  #onopen(opened: () => void) {
-    if (this.resolveClose) {
-      this.resolveClose();
-      return;
-    }
-    // console.log("#onopen setting reconnectTimeout to 0");
-    // this.reconnectTimeout = 0;
-    // TODO: Send ephereal messages after subscription, permament before
+
+  public async connect(): Promise<void> {
+    await this.wsConnection.connect();
+    // After successful connection, send queued messages and subscriptions
     for (const subid in this.openSubs) {
       if (this.logging) {
         console.log("REQ", this.url, subid, ...this.openSubs[subid].filters);
       }
-      this.trySend(["REQ", subid, ...this.openSubs[subid].filters]);
+      this.wsConnection.send(JSON.stringify(["REQ", subid, ...this.openSubs[subid].filters]));
     }
     for (const msg of this.sendOnConnect) {
       if (this.logging) {
         console.log("(Relay msg)", this.url, msg);
       }
-      this.ws?.send(msg);
+      this.wsConnection.send(msg);
     }
     this.sendOnConnect = [];
-
-    this.listeners.connect.forEach((cb) => cb());
-    opened();
   }
 
-  async connectRelay(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      try {
-        const ws = new WebSocket(this.url);
-        this.ws = ws;
-      } catch (err) {
-        reject(err);
-        return;
-      }
+  public close(): Promise<void> {
+    return this.wsConnection.close();
+  }
 
-      this.ws.onopen = this.#onopen.bind(this, resolve);
-      this.ws.onerror = (e) => {
-        this.listeners.error.forEach((cb) => cb());
-        reject(e);
-      };
-      this.ws.onclose = this.#onclose.bind(this);
-      this.ws.onmessage = this.#onmessage.bind(this);
+  public on(type: "connect" | "disconnect" | "error" | "notice" | "auth", cb: any): void {
+    this.eventEmitter.on(type, cb);
+  }
+
+  public off(type: "connect" | "disconnect" | "error" | "notice" | "auth", cb: any): void {
+    this.eventEmitter.off(type, cb);
+  }
+
+  public publish(event: Event): Pub {
+    return this.sendEvent("EVENT", event);
+  }
+
+  public auth(event: Event): Pub {
+    return this.sendEvent("AUTH", event);
+  }
+
+  private sendEvent(type: "EVENT" | "AUTH", event: Event): Pub {
+    if (!event.id) throw new Error(`event ${event} has no id`);
+    const id = event.id;
+
+    let sent = false;
+    let mustMonitor = false;
+
+    this.trySend([type, event])
+      .then(() => {
+        sent = true;
+        if (mustMonitor) {
+          this.startMonitoring(id);
+          mustMonitor = false;
+        }
+      })
+      .catch(() => {});
+
+    return {
+      on: (type: "ok" | "seen" | "failed", cb: any) => {
+        this.pubListeners[id] = this.pubListeners[id] || {
+          ok: [],
+          seen: [],
+          failed: [],
+        };
+        this.pubListeners[id][type].push(cb);
+
+        if (type === "seen") {
+          if (sent) this.startMonitoring(id);
+          else mustMonitor = true;
+        }
+      },
+      off: (type: "ok" | "seen" | "failed", cb: any) => {
+        const listeners = this.pubListeners[id];
+        if (!listeners) return;
+        const idx = listeners[type].indexOf(cb);
+        if (idx >= 0) listeners[type].splice(idx, 1);
+      },
+    };
+  }
+
+  private startMonitoring(id: string) {
+    const monitor = this.sub([{ids: [id]}], {
+      id: `monitor-${id.slice(0, 5)}`,
+    });
+    const willUnsub = setTimeout(() => {
+      (this.pubListeners[id]?.failed || []).forEach((cb) =>
+        cb("event not seen after 5 seconds")
+      );
+      monitor.unsub();
+    }, 5000);
+    monitor.on("event", () => {
+      clearTimeout(willUnsub);
+      (this.pubListeners[id]?.seen || []).forEach((cb) => cb());
     });
   }
 
-  async connect(): Promise<void> {
-    if (this.ws?.readyState && this.ws.readyState < 2) return; // ws already open or connecting
-    if (this.ws?.readyState === 2) {
-      this.ws.close();
-    }
-    this.ws = undefined;
-    await this.connectRelay();
+  get status(): number {
+    return this.wsConnection.readyState;
   }
 
+  get connected(): boolean {
+    return this.wsConnection.isConnected;
+  }
+
+  get connectionInfo(): string {
+    return this.wsConnection.connectionInfo;
+  }
+
+  async trySend(params: [string, ...any]) {
+    const msg = JSON.stringify(params);
+
+    if (this.connected) {
+      this.wsConnection.send(msg);
+    } else {
+      this.sendOnConnect.push(msg);
+    }
+  }
+
+  sub(filters: Filter[], opts: SubscriptionOptions = {}): Sub {
+    const subid = opts.id || Math.random().toString().slice(2);
+    const skipVerification = opts.skipVerification || false;
+
+    this.openSubs[subid] = {
+      id: subid,
+      filters,
+      skipVerification,
+    };
+    if (this.connected) {
+      if (this.logging) {
+        console.log("REQ2", this.url, subid, ...filters);
+      }
+      this.trySend(["REQ", subid, ...filters]);
+    }
+
+    return {
+      sub: (newFilters, newOpts = {}) =>
+        this.sub(newFilters || filters, {
+          skipVerification: newOpts.skipVerification || skipVerification,
+          id: subid,
+        }),
+      unsub: () => {
+        delete this.openSubs[subid];
+        delete this.subListeners[subid];
+        if (this.connected) {
+          if (this.logging) {
+            console.log("CLOSE", this.url, subid);
+          }
+          this.trySend(["CLOSE", subid]);
+        }
+      },
+      on: (type: "event" | "eose", cb: any): void => {
+        this.subListeners[subid] = this.subListeners[subid] || {
+          event: [],
+          eose: [],
+        };
+        this.subListeners[subid]![type].push(cb);
+      },
+      off: (type: "event" | "eose", cb: any): void => {
+        const listeners = this.subListeners[subid];
+
+        if (!listeners) return;
+
+        const idx = listeners[type].indexOf(cb);
+        if (idx >= 0) listeners[type].splice(idx, 1);
+      },
+    };
+  }
   relayInit(): Relay {
     const this2 = this;
     return {
@@ -295,149 +358,11 @@ class RelayC {
       get status() {
         return this2.status;
       },
+      get connectionInfo() {
+        return this2.connectionInfo;
+      },
       // @ts-ignore
       relay: this2,
-    };
-  }
-  get status() {
-    return this.ws?.readyState ?? 3;
-  }
-  get connected() {
-    return this.ws?.readyState === 1;
-  }
-  close(): Promise<void> {
-    this.closedByClient = true;
-    this.ws?.close();
-    return new Promise<void>((resolve) => {
-      this.resolveClose = resolve;
-    });
-  }
-  on(type: RelayEvent, cb: any) {
-    this.listeners[type].push(cb);
-    if (type === "connect" && this.ws?.readyState === 1) {
-      cb();
-    }
-  }
-
-  off(type: RelayEvent, cb: any) {
-    const index = this.listeners[type].indexOf(cb);
-    if (index !== -1) this.listeners[type].splice(index, 1);
-  }
-
-  publish(event: Event): Pub {
-    return this._publish(event, "EVENT");
-  }
-
-  auth(event: Event): Pub {
-    return this._publish(event, "AUTH");
-  }
-
-  private _publish(event: Event, type: string) {
-    const this2 = this;
-    if (!event.id) throw new Error(`event ${event} has no id`);
-    const id = event.id;
-
-    let sent = false;
-    let mustMonitor = false;
-
-    this2
-      .trySend([type, event])
-      .then(() => {
-        sent = true;
-        if (mustMonitor) {
-          startMonitoring();
-          mustMonitor = false;
-        }
-      })
-      .catch(() => {});
-
-    const startMonitoring = () => {
-      const monitor = this.sub([{ids: [id]}], {
-        id: `monitor-${id.slice(0, 5)}`,
-      });
-      const willUnsub = setTimeout(() => {
-        (this2.pubListeners[id]?.failed || []).forEach((cb) =>
-          cb("event not seen after 5 seconds")
-        );
-        monitor.unsub();
-      }, 5000);
-      monitor.on("event", () => {
-        clearTimeout(willUnsub);
-        (this2.pubListeners[id]?.seen || []).forEach((cb) => cb());
-      });
-    };
-
-    return {
-      on: (type: "ok" | "seen" | "failed", cb: any) => {
-        this2.pubListeners[id] = this2.pubListeners[id] || {
-          ok: [],
-          seen: [],
-          failed: [],
-        };
-        this2.pubListeners[id][type].push(cb);
-
-        if (type === "seen") {
-          if (sent) startMonitoring();
-          else mustMonitor = true;
-        }
-      },
-      off: (type: "ok" | "seen" | "failed", cb: any) => {
-        const listeners = this2.pubListeners[id];
-        if (!listeners) return;
-        const idx = listeners[type].indexOf(cb);
-        if (idx >= 0) listeners[type].splice(idx, 1);
-      },
-    };
-  }
-
-  sub(filters: Filter[], opts: SubscriptionOptions = {}): Sub {
-    const this2 = this;
-    const subid = opts.id || Math.random().toString().slice(2);
-    const skipVerification = opts.skipVerification || false;
-
-    this2.openSubs[subid] = {
-      id: subid,
-      filters,
-      skipVerification,
-    };
-    if (this2.connected) {
-      if (this.logging) {
-        console.log("REQ2", this.url, subid, ...filters);
-      }
-      this2.trySend(["REQ", subid, ...filters]);
-    }
-
-    return {
-      sub: (newFilters, newOpts = {}) =>
-        this.sub(newFilters || filters, {
-          skipVerification: newOpts.skipVerification || skipVerification,
-          id: subid,
-        }),
-      unsub: () => {
-        delete this2.openSubs[subid];
-        delete this2.subListeners[subid];
-        if (this2.connected) {
-          if (this2.logging) {
-            console.log("CLOSE", this.url, subid);
-          }
-          this2.trySend(["CLOSE", subid]);
-        }
-      },
-      on: (type: "event" | "eose", cb: any): void => {
-        this2.subListeners[subid] = this2.subListeners[subid] || {
-          event: [],
-          eose: [],
-        };
-        this2.subListeners[subid]![type].push(cb);
-      },
-      off: (type: "event" | "eose", cb: any): void => {
-        const listeners = this2.subListeners[subid];
-
-        if (!listeners) return;
-
-        const idx = listeners[type].indexOf(cb);
-        if (idx >= 0) listeners[type].splice(idx, 1);
-      },
     };
   }
 }

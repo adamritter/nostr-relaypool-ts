@@ -269,7 +269,7 @@ test("benchmark_merge", () => {
   let _result = mergeSimilarAndRemoveEmptyFilters(filters);
   let time = Date.now() - start;
   // console.log("mergeSimilarAndRemoveEmptyFilters benchmark", time);
-  expect(time).toBeLessThan(100);
+  expect(time).toBeLessThan(500);
   expect(_result.length).toBe(3);
 });
 

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nostr RelayPool Web Worker Example</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        #log { height: 300px; overflow-y: scroll; border: 1px solid #ccc; padding: 10px; background: #f9f9f9; margin-top: 10px; }
+        .event { margin-bottom: 5px; border-bottom: 1px solid #eee; padding-bottom: 5px; font-size: 0.8em; }
+        #anim { width: 50px; height: 50px; background: red; position: relative; border-radius: 50%; }
+    </style>
+</head>
+<body>
+    <h1>Nostr RelayPool Web Worker</h1>
+    <p>This example demonstrates processing Nostr events in a background Web Worker, keeping the UI thread responsive.</p>
+    
+    <div id="anim"></div>
+    <p>The ball above is animated on the main thread. It should move smoothly even when events are arriving.</p>
+
+    <button id="start">Start Subscription</button>
+    <div id="log"></div>
+
+    <script type="module" src="./main.ts"></script>
+</body>
+</html>

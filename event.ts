@@ -1,4 +1,5 @@
-import type {Kind, Event} from "nostr-tools";
+import type {Event} from "nostr-tools";
+import type {Kind} from "./kind";
 import {Author} from "./author";
 import type {RelayPool} from "./relay-pool";
 

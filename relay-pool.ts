@@ -1,4 +1,8 @@
-import type {Filter, Event} from "nostr-tools";
+import type {Filter, Event, VerifiedEvent} from "nostr-tools";
+import {finalizeEvent, getPublicKey} from "nostr-tools";
+import {getZapEndpoint, makeZapRequest, useFetchImplementation as useFetchImplementationNip57} from "nostr-tools/nip57";
+import {useFetchImplementation as useFetchImplementationNip05} from "nostr-tools/nip05";
+import * as nip19 from "nostr-tools/nip19";
 import {mergeSimilarAndRemoveEmptyFilters} from "./merge-similar-filters";
 import {type Relay, relayInit, type Sub} from "./relay";
 import type {OnEventObject, OnEvent} from "./on-event-filters";
@@ -9,6 +13,7 @@ import {
   groupFiltersByRelayAndEmitCacheHits,
 } from "./group-filters-by-relay";
 import type {CallbackReplayer} from "./callback-replayer";
+import {Kind} from "./kind";
 import {NewestEventCache} from "./newest-event-cache";
 import {SubscriptionFilterStateCache} from "./subscription-filter-state-cache";
 
@@ -42,6 +47,27 @@ function parseJSON(json: string | undefined) {
   if (json) {
     return JSON.parse(json);
   }
+}
+
+function parseNip65Relays(event: Event | undefined): string[] | undefined {
+  if (!event) {
+    return undefined;
+  }
+  if (event.kind === 10002) {
+    const relays: string[] = [];
+    for (const tag of event.tags) {
+      if (tag[0] === "r" && tag[1]) {
+        const url = tag[1];
+        const mode = tag[2]; // undefined (both), "read", or "write"
+        if (mode === undefined || mode === "write") {
+          relays.push(url);
+        }
+      }
+    }
+    return relays.length > 0 ? relays : undefined;
+  }
+  // Fallback for Kind 10003 or Kind 3 (legacy)
+  return parseJSON(event.content);
 }
 
 function registerSubscriptionFilterStateCache(
@@ -117,6 +143,7 @@ export class RelayPool {
     relays?: string[],
     options: {
       useEventCache?: boolean;
+      eventCacheCapacity?: number;
       externalGetEventById?: (id: string) => Event | undefined;
       logSubscriptions?: boolean;
       autoReconnect?: boolean;
@@ -131,11 +158,13 @@ export class RelayPool {
     this.autoReconnect = options.autoReconnect;
     this.deleteSignatures = options.deleteSignatures;
     this.skipVerification = options.skipVerification;
-    this.writeRelays = new NewestEventCache(10003, this, undefined, true);
+    useFetchImplementationNip05(global.fetch); // For NIP-05 fetches
+    useFetchImplementationNip57(global.fetch); // For NIP-57 fetches
+    this.writeRelays = new NewestEventCache(10002, this, undefined, false);
     this.metadataCache = new NewestEventCache(0, this);
     this.contactListCache = new NewestEventCache(3, this);
     if (options.useEventCache) {
-      this.eventCache = new EventCache();
+      this.eventCache = new EventCache(options.eventCacheCapacity);
     }
     if (options.subscriptionCache) {
       this.subscriptionCache = new Map();
@@ -213,13 +242,13 @@ export class RelayPool {
       this.autoReconnect,
     );
     this.relayByUrl.set(relay, relayInstance);
+    relayInstance.on("auth", (challenge: string) => {
+      this.authcbs.forEach((cb) => cb(relayInstance, challenge));
+    });
     relayInstance.connect().then(
       (onfulfilled) => {
         relayInstance?.on("notice", (msg: string) => {
           this.noticecbs.forEach((cb) => cb(relay, msg));
-        });
-        relayInstance?.on("auth", (msg: string) => {
-          this.authcbs.forEach((cb) => cb(relayInstance, msg));
         });
       },
       (onrejected) => {
@@ -486,7 +515,7 @@ export class RelayPool {
       promises.push(
         this.writeRelays
           ?.get(author)
-          .then((event) => parseJSON(event?.content))
+          .then((event) => parseNip65Relays(event))
           .catch(() => options?.defaultRelays || []),
       );
       allAuthorsArray.push(author);
@@ -691,6 +720,149 @@ export class RelayPool {
     }
   }
 
+  authenticate(relayUrl: string, challenge: string, privateKey: string) {
+    const event = finalizeEvent(
+      {
+        kind: Kind.ClientAuth,
+        created_at: Math.floor(Date.now() / 1000),
+        tags: [
+          ["relay", relayUrl],
+          ["challenge", challenge],
+        ],
+        content: "",
+      },
+      privateKey as any
+    );
+
+    const instance = this.addOrGetRelay(relayUrl);
+    instance.auth(event);
+  }
+  
+  finalizeEvent(eventTemplate: EventTemplate, privateKey: string): VerifiedEvent {
+    return finalizeEvent(eventTemplate, privateKey);
+  }
+
+  // Abstraction for signing an event, useful for NIP-07 integration
+  async signEvent(
+    eventTemplate: EventTemplate,
+    privateKey?: string, // Local private key for signing
+    signer?: (event: EventTemplate) => Promise<VerifiedEvent> // NIP-07 compatible signer
+  ): Promise<VerifiedEvent> {
+    if (signer) {
+      // Use external signer (e.g., window.nostr)
+      const event = await signer(eventTemplate);
+      return event;
+    } else if (privateKey) {
+      // Use local private key for signing
+      return this.finalizeEvent(eventTemplate, privateKey);
+    } else {
+      throw new Error("No private key or signer provided for signing event.");
+    }
+  }
+
+  async zap(
+    senderPrivateKey: string, // Private key of the zapper
+    targetProfilePointer: string, // npub or NIP-05 identifier
+    amountSats: number,
+    comment: string = "",
+    targetEventId?: string, // If zapping an event
+  ): Promise<{zapRequestEvent: Event; invoice: string}> {
+    let targetPubkey: string | undefined;
+    let targetRelays: string[] | undefined;
+    let lud16: string | undefined;
+
+    if (targetProfilePointer.startsWith("npub")) {
+      const decoded = nip19.decode(targetProfilePointer);
+      if (decoded.type === "npub") {
+        targetPubkey = decoded.data;
+      } else if (decoded.type === "nprofile") {
+        targetPubkey = decoded.data.pubkey;
+        targetRelays = decoded.data.relays;
+      }
+    } else if (targetProfilePointer.includes("@")) {
+      lud16 = targetProfilePointer; // NIP-05 identifier, will be resolved
+    } else {
+      // Assume it's a hex pubkey
+      targetPubkey = targetProfilePointer;
+    }
+
+    if (!targetPubkey) {
+      throw new Error("Invalid target profile pointer for zap: could not determine pubkey.");
+    }
+
+    // 1. Fetch profile metadata to get LNURL (lud06 or lud16)
+    const metadataEvent = await this.fetchAndCacheMetadata(targetPubkey);
+
+    if (!metadataEvent) {
+      throw new Error(`Could not fetch metadata for pubkey: ${targetPubkey}`);
+    }
+
+    const profileContent = JSON.parse(metadataEvent.content);
+    if (!profileContent.lud16 && !profileContent.lud06) {
+      throw new Error(`No LNURL found in metadata for ${targetPubkey}`);
+    }
+
+    lud16 = lud16 || profileContent.lud16 || profileContent.lud06; // Prefer lud16, fallback to lud06
+    if (!lud16) {
+      throw new Error("LNURL not found in profile metadata.");
+    }
+
+    // 2. Get Zap Endpoint
+    const zapEndpoint = await getZapEndpoint(metadataEvent);
+    if (!zapEndpoint) {
+      throw new Error("Zap endpoint not found or invalid.");
+    }
+
+    // 3. Create Zap Request Event
+    const zapRequestTemplate = {
+      kind: Kind.ZapRequest,
+      created_at: Math.floor(Date.now() / 1000),
+      tags: [
+        ["p", targetPubkey],
+        ["amount", (amountSats * 1000).toString()], // amount in millisatoshis
+        ["relays", ...(targetRelays || Array.from(this.relayByUrl.keys()))], // Use target relays or connected relays
+      ],
+      content: comment,
+    };
+
+    if (targetEventId) {
+      zapRequestTemplate.tags.push(["e", targetEventId]);
+    }
+
+    // Finalize (sign) the zap request event
+    const zapRequestEvent = await this.signEvent(zapRequestTemplate, senderPrivateKey);
+
+    // 4. Fetch the invoice from the zap endpoint
+    const url = new URL(zapEndpoint);
+    url.searchParams.append("amount", (amountSats * 1000).toString()); // millisatoshis
+    url.searchParams.append("nostr", JSON.stringify(zapRequestEvent));
+    url.searchParams.append("lnurl", lud16);
+
+    const response = await fetch(url.toString());
+    const zapResponse = await response.json();
+
+    if (zapResponse.error) {
+      throw new Error(`Zap endpoint error: ${zapResponse.error}`);
+    }
+    
+    return { zapRequestEvent, invoice: zapResponse.pr };
+  }
+
+  search(
+    query: string,
+    relays: string[] | undefined,
+    onEvent: OnEvent,
+    maxDelayms?: number,
+    onEose?: OnEose,
+    options: SubscriptionOptions = {},
+  ): () => void {
+    const filter = {
+      kinds: [Kind.Text], // NIP-50 typically targets Kind 1 (Short Text Note)
+      search: query,
+    };
+    return this.subscribe([filter], relays, onEvent, maxDelayms, onEose, options);
+  }
+
   onnotice(cb: (url: string, msg: string) => void) {
     this.noticecbs.push(cb);
   }
@@ -727,10 +899,9 @@ export class RelayPool {
       pubkey: "",
       id: "",
       sig: "",
-      content: JSON.stringify(writeRelays),
-      // @ts-ignore
-      kind: 10003,
-      tags: [["p", pubkey]],
+      content: "",
+      kind: Kind.RelayList,
+      tags: writeRelays.map((r) => ["r", r, "write"]),
     };
     this.writeRelays.data.set(pubkey, event);
   }

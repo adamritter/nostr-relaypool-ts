@@ -1,5 +1,5 @@
 import {type Event, type Filter, matchFilters, matchFilter} from "nostr-tools";
-import {WebSocket, WebSocketServer} from "isomorphic-ws";
+import {WebSocket, WebSocketServer} from "ws";
 
 const _ = WebSocket; // Importing WebSocket is needed for WebSocketServer to work
 
@@ -10,7 +10,9 @@ export class InMemoryRelayServer {
   subs: Map<string, Filter[]> = new Map();
   connections: Set<WebSocket> = new Set();
   totalSubscriptions = 0;
-  constructor(port = 8081, host = "localhost") {
+  port: number;
+  constructor(port = 8081, host = "0.0.0.0") {
+    this.port = port;
     this.wss = new WebSocketServer({port, host});
     this.wss.on("connection", (ws) => {
       this.connections.add(ws);

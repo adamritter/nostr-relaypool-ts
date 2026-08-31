@@ -1,4 +1,5 @@
-import {type Filter, Kind, type Event} from "nostr-tools";
+import {type Filter, type Event} from "nostr-tools";
+import {Kind} from "./kind";
 
 export class EventCache {
   eventsById: Map<string, Event> = new Map();
@@ -6,6 +7,58 @@ export class EventCache {
   contactsByPubKey: Map<string, Event> = new Map();
   authorsKindsByPubKey: Map<string, Map<number, Event[]>> = new Map();
   eventsByTags: Map<string, Event[]> = new Map();
+  capacity: number;
+
+  constructor(capacity: number = 100000) {
+    this.capacity = capacity;
+  }
+
+  #removeEventFromAuthorKindsByPubKey(event: Event) {
+    const kindsByPubKey = this.authorsKindsByPubKey.get(event.pubkey);
+    if (kindsByPubKey) {
+      const events = kindsByPubKey.get(event.kind);
+      if (events) {
+        const index = events.findIndex((e) => e.id === event.id);
+        if (index !== -1) {
+          events.splice(index, 1);
+          if (events.length === 0) {
+            kindsByPubKey.delete(event.kind);
+          }
+        }
+      }
+      if (kindsByPubKey.size === 0) {
+        this.authorsKindsByPubKey.delete(event.pubkey);
+      }
+    }
+  }
+
+  #removeEventFromEventsByTags(event: Event) {
+    for (const tag of event.tags) {
+      let tag2 = tag[0] + ":" + tag[1];
+      const events = this.eventsByTags.get(tag2);
+      if (events) {
+        const index = events.findIndex((e) => e.id === event.id);
+        if (index !== -1) {
+          events.splice(index, 1);
+          if (events.length === 0) {
+            this.eventsByTags.delete(tag2);
+          }
+        }
+      }
+    }
+  }
+
+  deleteEvent(event: Event) {
+    this.eventsById.delete(event.id);
+    if (event.kind === Kind.Metadata) {
+      this.metadataByPubKey.delete(event.pubkey);
+    }
+    if (event.kind === Kind.Contacts) {
+      this.contactsByPubKey.delete(event.pubkey);
+    }
+    this.#removeEventFromAuthorKindsByPubKey(event);
+    this.#removeEventFromEventsByTags(event);
+  }
 
   #addEventToAuthorKindsByPubKey(event: Event) {
     const kindsByPubKey = this.authorsKindsByPubKey.get(event.pubkey);
@@ -43,9 +96,22 @@ export class EventCache {
   }
 
   addEvent(event: Event) {
-    if (this.getEventById(event.id)) {
+    if (this.eventsById.has(event.id)) {
+      this.eventsById.delete(event.id);
+      this.eventsById.set(event.id, event);
       return;
     }
+
+    if (this.eventsById.size >= this.capacity) {
+      const oldestId = this.eventsById.keys().next().value;
+      if (oldestId) {
+        const oldestEvent = this.eventsById.get(oldestId);
+        if (oldestEvent) {
+          this.deleteEvent(oldestEvent);
+        }
+      }
+    }
+
     this.eventsById.set(event.id, event);
     if (event.kind === Kind.Metadata) {
       this.metadataByPubKey.set(event.pubkey, event);
@@ -58,7 +124,12 @@ export class EventCache {
   }
 
   getEventById(id: string): Event | undefined {
-    return this.eventsById.get(id);
+    const event = this.eventsById.get(id);
+    if (event) {
+      this.eventsById.delete(id);
+      this.eventsById.set(id, event);
+    }
+    return event;
   }
 
   hasEventById(id: string): boolean {

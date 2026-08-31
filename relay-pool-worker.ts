@@ -8,6 +8,12 @@ export class RelayPoolWorker {
     number | string,
     {onEvent: OnEvent; onEose?: OnEose}
   >();
+  private errorcbs: Array<(url: string, err: string) => void> = [];
+  private noticecbs: Array<(url: string, msg: string) => void> = [];
+  private pendingRequests = new Map<
+    string,
+    {resolve: (data: any) => void; reject: (err: any) => void}
+  >();
 
   constructor(
     // eslint-disable-next-line no-undef
@@ -45,9 +51,23 @@ export class RelayPoolWorker {
     } else if (type === "subscribed") {
       // Do nothing
     } else if (type === "metadata") {
-      // Need better handling
+      const key = `metadata:${rest.pubkey}:${rest.requestId}`;
+      const pending = this.pendingRequests.get(key);
+      if (pending) {
+        pending.resolve(rest.metadata);
+        this.pendingRequests.delete(key);
+      }
     } else if (type === "contactList") {
-      // Need better handling
+      const key = `contactList:${rest.pubkey}:${rest.requestId}`;
+      const pending = this.pendingRequests.get(key);
+      if (pending) {
+        pending.resolve(rest.contactList);
+        this.pendingRequests.delete(key);
+      }
+    } else if (type === "error") {
+      this.errorcbs.forEach((cb) => cb(rest.relayUrl, rest.err));
+    } else if (type === "notice") {
+      this.noticecbs.forEach((cb) => cb(rest.relayUrl, rest.notice));
     } else {
       console.warn("Unhandled message from worker:", event.data);
     }
@@ -117,35 +137,29 @@ export class RelayPoolWorker {
   }
 
   fetchAndCacheMetadata(pubkey: string): Promise<Event> {
-    return new Promise((resolve) => {
-      const listener = (event: MessageEvent) => {
-        if (event.data.type === "metadata" && event.data.pubkey === pubkey) {
-          this.worker.removeEventListener("message", listener);
-          resolve(event.data.metadata);
-        }
-      };
-
-      this.worker.addEventListener("message", listener);
+    const requestId = Math.random().toString(36).slice(2, 9);
+    return new Promise((resolve, reject) => {
+      this.pendingRequests.set(`metadata:${pubkey}:${requestId}`, {
+        resolve,
+        reject,
+      });
       this.worker.postMessage({
         action: "fetch_and_cache_metadata",
-        data: {pubkey},
+        data: {pubkey, requestId},
       });
     });
   }
 
   fetchAndCacheContactList(pubkey: string): Promise<Event> {
-    return new Promise((resolve) => {
-      const listener = (event: MessageEvent) => {
-        if (event.data.type === "contactList" && event.data.pubkey === pubkey) {
-          this.worker.removeEventListener("message", listener);
-          resolve(event.data.contactList);
-        }
-      };
-
-      this.worker.addEventListener("message", listener);
+    const requestId = Math.random().toString(36).slice(2, 9);
+    return new Promise((resolve, reject) => {
+      this.pendingRequests.set(`contactList:${pubkey}:${requestId}`, {
+        resolve,
+        reject,
+      });
       this.worker.postMessage({
         action: "fetch_and_cache_contact_list",
-        data: {pubkey},
+        data: {pubkey, requestId},
       });
     });
   }
@@ -181,5 +195,13 @@ export class RelayPoolWorker {
 
   close() {
     this.worker.postMessage({action: "close"});
+  }
+
+  onerror(cb: (url: string, msg: string) => void) {
+    this.errorcbs.push(cb);
+  }
+
+  onnotice(cb: (url: string, msg: string) => void) {
+    this.noticecbs.push(cb);
   }
 }

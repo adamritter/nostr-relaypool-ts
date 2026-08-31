@@ -19,9 +19,9 @@ describe("CallbackReplayer", () => {
     });
     replayer.event(1, 2);
     unsub1();
-    expect(unsub).not.toBeCalled();
+    expect(unsub).not.toHaveBeenCalled();
     unsub2();
-    expect(unsub).toBeCalled();
+    expect(unsub).toHaveBeenCalled();
   });
 });
 
@@ -46,8 +46,8 @@ describe("CancellableCallbackReplayer", () => {
     });
     onevent?.(1, 2);
     unsub1();
-    expect(unsub).not.toBeCalled();
+    expect(unsub).not.toHaveBeenCalled();
     unsub2();
-    expect(unsub).toBeCalled();
+    expect(unsub).toHaveBeenCalled();
   });
 });

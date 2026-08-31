@@ -2,7 +2,7 @@
 
 import {RelayPool} from "./relay-pool";
 import {Author} from "./author";
-import {Kind} from "nostr-tools";
+import {Kind} from "./kind";
 
 jest.setTimeout(5000);
 const pubkey =

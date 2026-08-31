@@ -1,4 +1,5 @@
-import {type Filter, Kind, matchFilter, type Event} from "nostr-tools";
+import {type Filter, matchFilter, type Event} from "nostr-tools";
+import {Kind} from "./kind";
 import type {EventObject} from "./event";
 export type OnEventArgs = [
   event: Event,

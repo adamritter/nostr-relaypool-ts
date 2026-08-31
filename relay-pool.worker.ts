@@ -113,7 +113,12 @@ self.onmessage = (event: MessageEvent<MessageData>) => {
 
     case "fetch_and_cache_metadata":
       relayPool.fetchAndCacheMetadata(data.pubkey).then((metadata: Event) => {
-        postMessage({type: "metadata", pubkey: data.pubkey, metadata});
+        postMessage({
+          type: "metadata",
+          pubkey: data.pubkey,
+          metadata,
+          requestId: data.requestId,
+        });
       });
       break;
 
@@ -121,7 +126,12 @@ self.onmessage = (event: MessageEvent<MessageData>) => {
       relayPool
         .fetchAndCacheContactList(data.pubkey)
         .then((contactList: Event) => {
-          postMessage({type: "contactList", pubkey: data.pubkey, contactList});
+          postMessage({
+            type: "contactList",
+            pubkey: data.pubkey,
+            contactList,
+            requestId: data.requestId,
+          });
         });
       break;
 
